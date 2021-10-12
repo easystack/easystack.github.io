@@ -68,14 +68,33 @@ When submitting pull requests, refer to this format:
 - Release note
 
 
-### Code style
+### How to new post
 
-```TO BE DEFINED```
+All posts houses under 'content/posts', You can create a new post by creating a new .md file, prefixing it with anything you want. incremental numbers or date string will work well if you prefer.
 
+The post contains two parts, the header part and content part. the header part of this file which starts and ends with 3 horizontal hyphen(---) is called the front-matter and every post that we write needs to be a front matter included here:
 
+title: This is the title of your post.
+date: This is the time that shows the posting time of your blog. The first portion is in the year-month-date format. You can edit the date and time as you wish.
+description: Add any description you like.
+author: Who is the post owner, we recommend to use your name or github id.
+categories: which category would this post be in. the posts will be listed by the category name. 
+tags: Any tag would this post be under.
+draft: Is this post draft or not, the value is either 'true' or 'false'.
 
+You can refer to the following example and have your modification:
 
+```
+---
+title: "your post title"
+date: 2021-10-09T15:50:43+08:00
+draft: false
+description: "any description you would prefer to here"
+author: "freesky-edward"
+categories: []
+tags: ["container"]
+--- 
+```
 
-
-
+The content part can be any content following the markdown rules.
 
