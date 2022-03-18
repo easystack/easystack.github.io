@@ -1,497 +1,192 @@
-<!doctype html><html lang=zh>
-<head>
-<title>Containerd 简介 | easystack</title>
-<meta charset=utf-8>
-<meta http-equiv=x-ua-compatible content="IE=edge,chrome=1">
-<meta name=viewport content="width=device-width,minimum-scale=1">
-<meta name=description content="containerd 入门篇">
-<meta name=generator content="Hugo 0.88.1">
-<meta name=ROBOTS content="NOINDEX, NOFOLLOW">
-<link rel=stylesheet href=/css/style.css>
-<link rel="shortcut icon" href=/images/favicon.ico type=image/x-icon>
-</head>
-<body>
-<nav class=navigation>
-<a href=/> <span class=arrow>←</span>首页</a>
+<!doctype html><html lang=zh><head><title>Containerd 简介 | easystack</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="containerd 入门篇"><meta name=generator content="Hugo 0.94.2"><meta name=ROBOTS content="NOINDEX, NOFOLLOW"><link rel=stylesheet href=/css/style.css><link rel="shortcut icon" href=/images/favicon.ico type=image/x-icon></head><body><nav class=navigation><a href=/><span class=arrow>←</span>首页</a>
 <a href=/posts>归档</a>
 <a href=/tags>标签</a>
 <a href=/about>关于</a>
-<a class=button href=https://easystack.github.io/index.xml>订阅</a>
-</nav>
-<main class=main>
-<section id=single>
-<h1 class=title>Containerd 简介</h1>
-<div class=tip>
-<time datetime="2021-10-09 15:50:43 +0800 +0800">2021年10月09日</time>
-<span class=split>
-·
-</span>
-<span>
-3823字
-</span>
-<span class=split>
-·
-</span>
-<span>
-8分钟
-</span>
-</div>
-<aside class=toc>
-<details>
-<summary>Table of Contents
-</summary>
-<div>
-<nav id=TableOfContents>
-<ul>
-<li><a href=#diff-插件>diff 插件</a></li>
-<li><a href=#scheduler>scheduler</a></li>
-<li><a href=#monitor>monitor</a></li>
-<li><a href=#cgroup>cgroup</a></li>
-<li><a href=#runtime-v1>runtime v1</a></li>
-<li><a href=#runtime-v2>runtime v2</a></li>
-<li><a href=#snapshot>snapshot</a></li>
-</ul>
-<ul>
-<li><a href=#container-image-lease-namespace-服务>container, image, lease, namespace 服务：</a></li>
-<li><a href=#content-服务>content 服务</a></li>
-<li><a href=#task-服务>task 服务</a></li>
-<li><a href=#diff-服务>diff 服务:</a></li>
-<li><a href=#event服务>event服务：</a></li>
-<li><a href=#introspection-服务>introspection 服务:</a></li>
-<li><a href=#healthcheck-服务>healthcheck 服务：</a></li>
-<li><a href=#version服务>version服务：</a></li>
-<li><a href=#opt服务>opt服务：</a></li>
-<li><a href=#server>server</a></li>
-</ul>
-</nav>
-</div>
-</details>
-</aside>
-<div class=content>
-<h1 id=历史>历史 <a href=#%e5%8e%86%e5%8f%b2 class=anchor>🔗</a></h1><ul>
-<li>Docker Daemon从最初集成在docker命令中（1.11版本前），</li>
-<li>独立成单独二进制程序（1.11版本开始）2016.12
-<ul>
-<li>containerd是容器技术标准化之后的产物，为了能够兼容OCI标准，从Docker Daemon剥离</li>
-<li>containerd分v0.2.x ， v1.x版本
-<ul>
-<li>v0.2.x 由docker daemon集成</li>
-<li>v1.x 开始支持oci标准</li>
-</ul>
-</li>
-<li>containerd项目地址： github.com/docker/containerd</li>
-</ul>
-</li>
-<li>containerd捐献给cncf 2017.03
-<ul>
-<li>项目地址修改为 github.com/containerd/containerd</li>
-<li>v1.0.0正式版发布 2017.12 支持OCI接口</li>
-<li>v1.1.0正式版 2018.4 支持CRI接口</li>
-<li>v1.2.0正式版 2018.10 runtime v2稳定</li>
-</ul>
-</li>
-<li>shim
-<ul>
-<li>shim是一个真实运行的容器的真实载体</li>
-</ul>
-</li>
-</ul>
-<h1 id=架构>架构 <a href=#%e6%9e%b6%e6%9e%84 class=anchor>🔗</a></h1><ul>
-<li>组件如图</li>
-</ul>
-<p><p class=markdown-image>
-<img src=/images/containerd-arch.png alt=1>
-</p></p>
-<h1 id=glossary>glossary <a href=#glossary class=anchor>🔗</a></h1><ul>
-<li>
-<p>服务： 提供grpc服务</p>
-</li>
-<li>
-<p>sandbox：一种特殊容器，主要作用准备容器隔离的环境，包括网络，io目录，cgroup parent</p>
-</li>
-<li>
-<p>container：业务容器，每个进程都由一个task 管理</p>
-</li>
-<li>
-<p>shim：管理器(containerd) 和 runtime的粘和层，因为runc是二进制文件执行，无法常驻内存，使用shim一方面方便管理，另一方面扩展runtime; shim管理 sandbox + container(s)</p>
-</li>
-<li>
-<p>task：代表进程+io</p>
-</li>
-<li>
-<p>runtime v2: 可以理解 task 管理器</p>
-</li>
-</ul>
-<h1 id=服务>服务 <a href=#%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h1><ul>
-<li>每个服务都是plugin方式加入，包括不限于image, runtime, grpc server等</li>
-<li>plugin特点
-<ul>
-<li>插件URI为 Type+ID，如 <code>io.containerd.snapshotter.v1.overlayfs</code>，io.containerd.snapshotter.v1是Type，overlayfs是ID</li>
-<li>插件类型之间有依赖, 从下向上排序：
-<ul>
-<li>ContentPlugin， SnapshotPlugin</li>
-<li>MetadataPlugin</li>
-<li>GCPlugin，RuntimePlugin，DiffPlugin</li>
-<li>ServicePlugin</li>
-<li>InternalPlugin，GRPCPlugin</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>数据结构</li>
-</ul>
-<div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-fallback data-lang=fallback>classDiagram
-    class Meta{
-        +&#39;ocispec.Platform&#39; Platforms
-        +&#39;map[string]string&#39; Exports
-        +string[] Capabilities
-    }
-    class Plugin{
-        +Registration Registration
-        +Meta Meta
-        +string[] Requires
-        +object Config
-        +Err() error
-        +Instance() (object, error)
-    }
-    class Registration{
-        +string Type
-        +string ID
-        +string[] Requires
-        +object Config
-        +Init(context) Plugin
-        +URI() string
-    }
-
-
-</code></pre></div><h2 id=diff-插件>diff 插件 <a href=#diff-%e6%8f%92%e4%bb%b6 class=anchor>🔗</a></h2><ul>
-<li>用于snaphost的操作</li>
-<li>diff/walking/plugin目录， DiffPlugin类型，依赖MetadataPlugin</li>
-<li>提供两个方法
-<ul>
-<li><code>Compare</code> 根据提供的 lower，upper 信息，得到oscispec.Descriptor</li>
-<li><code>Apply</code> 从镜像压缩文件中读取内容，并按序执行多个处理器，主要是校验，解压，自定义插件等</li>
-</ul>
-</li>
-</ul>
-<h2 id=scheduler>scheduler <a href=#scheduler class=anchor>🔗</a></h2><ul>
-<li>调度器，gc/scheduler目录， GCPlugin类型，依赖MetadataPlugin</li>
-<li>配置信息
-<ul>
-<li>PauseThreshold: 暂停阈值，平均每秒2%的暂停时间，使用该值计算下次等待周期，默认为0.02, 最大值0.5</li>
-<li>DeletionThreshold：删除阈值，在删除多少次之后至少保证发生gc调度，0表示不会被删除触发，默认0</li>
-<li>MutationThreshold： 突变阈值</li>
-<li>ScheduleDelay：调度延迟，当发生手动触发或者阈值触发后，延迟多久才开始GC，默认0ms</li>
-<li>StartupDelay： 慢启动，默认100ms</li>
-</ul>
-</li>
-<li>goroutine
-<ul>
-<li>gc实际是执行content.GarbageCollect</li>
-</ul>
-</li>
-</ul>
-<h2 id=monitor>monitor <a href=#monitor class=anchor>🔗</a></h2><ul>
-<li>容器的起停状态同步， InternalPlugin类型，依赖ServicePlugin</li>
-<li>goroutine
-<ul>
-<li>过滤标签 <code>containerd.io/restart.status</code>的container</li>
-<li>对比container和预期状态是否相符</li>
-<li>重新执行start或stop</li>
-</ul>
-</li>
-</ul>
-<h2 id=cgroup>cgroup <a href=#cgroup class=anchor>🔗</a></h2><ul>
-<li>进程oom监听和指标统计，在 metrics/cgroup 目录， TaskMonitorPlugin类型</li>
-<li>作用：task的指标和oom监听</li>
-<li>主要是shim 在使用该模块，shim需要监听 task 是否发生OOM</li>
-</ul>
-<h2 id=runtime-v1>runtime v1 <a href=#runtime-v1 class=anchor>🔗</a></h2><ul>
-<li>容器进程管理器,， RuntimePlugin类型，依赖MetadataPlugin</li>
-<li>配置
-<ul>
-<li>shim： shim二进制文件地址</li>
-<li>runtime： 被shim使用的runtime二进制文件地址</li>
-<li>no_shim： 直接调用runtime，跳过shim</li>
-<li>shim_debug： 是否打开shim调试</li>
-</ul>
-</li>
-</ul>
-<h2 id=runtime-v2>runtime v2 <a href=#runtime-v2 class=anchor>🔗</a></h2><ul>
-<li>容器进程管理器, RuntimePluginV2类型，依赖MetadataPlugin</li>
-<li>在<a href=https://github.com/containerd/containerd/blob/34fb8d8967595292adce04b53b12ee33499cd6b8/client.go#L102 target=_blank rel=noopener>client</a>中被配置为默认的runtime</li>
-<li>初始化时会执行以下内容
-<ul>
-<li>创建目录 {root/state}/io.containerd.runtime.v2.task</li>
-<li>读取 {state}/io.containerd.runtime.v2.task目录</li>
-<li>恢复shim 管理</li>
-</ul>
-</li>
-</ul>
-<div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-fallback data-lang=fallback>tips：
-fifo文件ro打开：当无写端，若是nonblocking模式，则返回，否则阻塞
-fifo文件wo打开：当无读端，返回ENXIO，若读端关闭时写数据，则返回SIGPIPE
-fifo文件rw打开：总是成功
-</code></pre></div><h2 id=snapshot>snapshot <a href=#snapshot class=anchor>🔗</a></h2><ul>
-<li>容器的rootfs管理器，SnapshotPlugin类型</li>
-<li>linux 平台
-<ul>
-<li>snapshots/{native, overlay, devmapper，btrfs}</li>
-<li>containerd/{aufs,zfs}</li>
-</ul>
-</li>
-<li>windows平台
-<ul>
-<li>snapshots/{lcow, windows}</li>
-</ul>
-</li>
-</ul>
-<div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=color:#080;font-style:italic># man 8 mount</span>
-<span style=color:#080;font-style:italic># references: https://wiki.archlinux.org/title/Overlay_filesystem</span>
-tips:
-<span style=color:#666>1</span> overlay 挂载
-mount -t overlay  overlay -o <span style=color:#b8860b>lowerdir</span><span style=color:#666>=</span>/lower:/lower2,upperdir<span style=color:#666>=</span>/upper,workdir<span style=color:#666>=</span>/work  /merged
-// upperdir 一般是可写层
-// workdir 空目录，
-<span style=color:#666>2</span> devmapper 挂载
-mount -t ext4 /dev/mapper/xx <span style=color:#666>{</span>target<span style=color:#666>}</span>
-<span style=color:#666>3</span> native 挂载
-mount -t <span style=color:#a2f>bind</span> <span style=color:#666>{</span>src<span style=color:#666>}</span> <span style=color:#666>{</span>dst<span style=color:#666>}</span>
-<span style=color:#666>4</span> btrfs 
-mount -t btrfs 
-</code></pre></div><h1 id=services>services <a href=#services class=anchor>🔗</a></h1><ul>
-<li>提供rpc服务和数据库操作等</li>
-<li>services/目录下，具体有以下的内容</li>
-</ul>
-<h2 id=container-image-lease-namespace-服务>container, image, lease, namespace 服务： <a href=#container-image-lease-namespace-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>local.go: 是service Plugin类型，对数据库的操作，以及event的发送</li>
-<li>service.go: 是grpc Plugin类型，提供grpc服务，并使用local内相同接口</li>
-</ul>
-<h2 id=content-服务>content 服务 <a href=#content-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>service.go: 提供grpc服务，CRUD content数据</li>
-<li>contentserver : content具体操作(content)</li>
-</ul>
-<h2 id=task-服务>task 服务 <a href=#task-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>local.go: 调用runtime v2同名接口，包括容器创建，开始，结束，删除，终端，状态等信息</li>
-<li>server.go: 提供grpc服务</li>
-</ul>
-<h2 id=diff-服务>diff 服务: <a href=#diff-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>local.go: 使用diff插件</li>
-<li>service.go: 提供grpc服务</li>
-</ul>
-<h2 id=event服务>event服务： <a href=#event%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>service.go: 提供grpc服务，包括转发，推送，订阅功能</li>
-</ul>
-<h2 id=introspection-服务>introspection 服务: <a href=#introspection-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>service.go: 提供grpc服务，列举注册的plugin</li>
-</ul>
-<h2 id=healthcheck-服务>healthcheck 服务： <a href=#healthcheck-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>service.go: 提供 grpc服务，检查指定服务的健康</li>
-</ul>
-<h2 id=version服务>version服务： <a href=#version%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>service.go: 提供 grpc服务，检查containerd version</li>
-</ul>
-<h2 id=opt服务>opt服务： <a href=#opt%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul>
-<li>配置目录 root
-<ul>
-<li>添加 {root}/bin 到环境变量 PATH中</li>
-<li>添加 {root}/lib 到环境变量LD_LIBRARY_PATH中</li>
-</ul>
-</li>
-</ul>
-<h2 id=server>server <a href=#server class=anchor>🔗</a></h2><ul>
-<li>基础plugin，扩展插件的初始化和服务启动
-<ul>
-<li>流程
-<ul>
-<li>注册 ContentPlugin插件</li>
-<li>注册 MetadataPlugin插件</li>
-<li>注册 proxy插件(ContentPlugin或SnapshotPlugin类型)</li>
-<li>注册DiffPlugin插件 (stream processor类型)，目前主要是处理 加密的镜像</li>
-</ul>
-</li>
-<li>监听event类型
-<ul>
-<li>/tasks/oom</li>
-<li>/images/</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml>version = <span style=color:#666>2</span>
-root = <span style=color:#b44>&#34;/var/lib/mycontainerd&#34;</span> <span style=color:#080;font-style:italic>#持久化目录</span>
-state = <span style=color:#b44>&#34;/var/run/mycontainerd&#34;</span> <span style=color:#080;font-style:italic>#非持久化目录</span>
-oom_score = <span style=color:#666>0</span> <span style=color:#080;font-style:italic># containerd的oom分数</span>
-...
-[proxy_plugins]
-  [proxy_plugins.stargz]
-    type = <span style=color:#b44>&#34;snapshot&#34;</span> <span style=color:#080;font-style:italic>#支持snapshot和content类型</span>
-    address = <span style=color:#b44>&#34;/run/containerd-stargz-grpc/containerd-stargz-grpc.sock&#34;</span>
-[stream_processors]
-  [stream_processors.<span style=color:#b44>&#34;io.containerd.ocicrypt.decoder.v1.tar.gzip&#34;</span>]
-    accepts = [<span style=color:#b44>&#34;application/vnd.oci.image.layer.v1.tar+gzip+encrypted&#34;</span>]
-    returns = <span style=color:#b44>&#34;application/vnd.oci.image.layer.v1.tar+gzip&#34;</span>
-    path = <span style=color:#b44>&#34;/usr/local/bin/ctd-decoder&#34;</span>
-
-[cgroup]
-  path = <span style=color:#b44>&#34;&#34;</span> <span style=color:#080;font-style:italic># containerd 所在路径，去除 ‘/sys/fs/cgroup/&#39;前缀的</span>
-[plugins]
-  [plugins.<span style=color:#b44>&#34;io.containerd.gc.v1.scheduler&#34;</span>]
-    pause_threshold = <span style=color:#666>0.02</span>
-    deletion_threshold = <span style=color:#666>0</span>
-    mutation_threshold = <span style=color:#666>100</span>
-    schedule_delay = <span style=color:#b44>&#34;0s&#34;</span>
-    startup_delay = <span style=color:#b44>&#34;100ms&#34;</span>
-  [plugins.<span style=color:#b44>&#34;io.containerd.internal.v1.restart&#34;</span>]
-    interval = <span style=color:#b44>&#34;10s&#34;</span> <span style=color:#080;font-style:italic>#restart插件，遍历container的周期</span>
-  [plugins.<span style=color:#b44>&#34;io.containerd.metadata.v1.bolt&#34;</span>]
-    content_sharing_policy = <span style=color:#b44>&#34;shared&#34;</span> <span style=color:#080;font-style:italic>#content策略，shared则所有不同ns的都可以访问，另一种是isolated</span>
-  [plugins.<span style=color:#b44>&#34;io.containerd.monitor.v1.cgroups&#34;</span>]
-    no_prometheus = <span style=color:#a2f;font-weight:700>false</span>
-  [plugins.<span style=color:#b44>&#34;io.containerd.runtime.v1.linux&#34;</span>]
-    shim = <span style=color:#b44>&#34;containerd-shim&#34;</span>
-    runtime = <span style=color:#b44>&#34;runc&#34;</span>
-    runtime_root = <span style=color:#b44>&#34;&#34;</span>
-    no_shim = <span style=color:#a2f;font-weight:700>false</span>
-    shim_debug = <span style=color:#a2f;font-weight:700>false</span>
-  [plugins.<span style=color:#b44>&#34;io.containerd.runtime.v2.task&#34;</span>]
-    platforms = [<span style=color:#b44>&#34;linux/amd64&#34;</span>] <span style=color:#080;font-style:italic>#镜像支持的平台类型</span>
-  [plugins.<span style=color:#b44>&#34;io.containerd.service.v1.diff-service&#34;</span>]
-    default = [<span style=color:#b44>&#34;walking&#34;</span>] <span style=color:#080;font-style:italic>#walking是内置的diff插件</span>
-</code></pre></div><h1 id=cri>cri <a href=#cri class=anchor>🔗</a></h1><ul>
-<li>GRPCPlugin类型，依赖ServicePlugin</li>
-<li>作用: 提供cri接口， cri 常见配置</li>
-</ul>
-<div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml>[plugins.cri]
-    disable_tcp_service = <span style=color:#a2f;font-weight:700>true</span>
-    stream_server_address = <span style=color:#b44>&#34;127.0.0.1&#34;</span> <span style=color:#080;font-style:italic># unix 监听地址</span>
-    stream_server_port = <span style=color:#b44>&#34;0&#34;</span> <span style=color:#080;font-style:italic># unix 监听端口,0是随机分配</span>
-    stream_idle_timeout = <span style=color:#b44>&#34;4h0m0s&#34;</span> <span style=color:#080;font-style:italic>#idle连接超时时间</span>
-    enable_selinux = <span style=color:#a2f;font-weight:700>false</span> 
-    sandbox_image = <span style=color:#b44>&#34;hub.easystack.io/captain/pause-amd64:3.0&#34;</span>
-    stats_collect_period = <span style=color:#666>10</span> <span style=color:#080;font-style:italic>#单位秒，snapshot状态收集</span>
-    systemd_cgroup = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#只适用io.containerd.runtime.v1.linux</span>
-    enable_tls_streaming = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic># 是否支持tls</span>
-    max_container_log_line_size = <span style=color:#666>16384</span> <span style=color:#080;font-style:italic>#单行日志最大byte</span>
-    disable_cgroup = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic># 当rootless 运行时，需要设置为true</span>
-    disable_apparmor = <span style=color:#a2f;font-weight:700>false</span>
-    restrict_oom_score_adj = <span style=color:#a2f;font-weight:700>false</span>
-    netns_mounts_under_state_dir = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#将net ns设置到{state}/netns目录下,而不是默认的/run/netns下</span>
-    max_concurrent_downloads = <span style=color:#666>3</span>
-    unset_seccomp_profile = <span style=color:#b44>&#34;&#34;</span> <span style=color:#080;font-style:italic>#seccomp配置文件</span>
-    disable_proc_mount = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#禁用k8s ProcMount， 对于k8s &lt;= 1.11时，必须设置为true</span>
-    
-      tolerate_missing_hugetlb_controller = <span style=color:#a2f;font-weight:700>true</span> <span style=color:#080;font-style:italic>#1.5+,对于k8s &lt;1.19,不支持配置hugetlb</span>
-      disable_hugetlb_controller = <span style=color:#a2f;font-weight:700>true</span> <span style=color:#080;font-style:italic>#1.5+, 适用于rootless+cgroupv2+systemd</span>
-      ignore_image_defined_volumes = <span style=color:#a2f;font-weight:700>true</span> <span style=color:#080;font-style:italic>#1.5+，创建container时，忽略image中定义的volume</span>
-    [plugins.cri.x509_key_pair_streaming] <span style=color:#080;font-style:italic>#stream tls配置</span>
-      tls_cert_file = <span style=color:#b44>&#34;&#34;</span>
-      tls_key_file = <span style=color:#b44>&#34;&#34;</span>
-    [plugins.cri.image_decryption] <span style=color:#080;font-style:italic># 解密镜像，参考项目 github.com/containerd/imgcrypt</span>
-      key_model = none
-    [plugins.cri.containerd]
-      snapshotter = <span style=color:#b44>&#34;overlayfs&#34;</span> <span style=color:#080;font-style:italic>#使用何种snapshot</span>
-      default_runtime_name = <span style=color:#b44>&#34;runc&#34;</span> <span style=color:#080;font-style:italic>#默认runtime，必须出现在后续的列表中</span>
-      no_pivot = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#只适用io.containerd.runtime.v1.linux</span>
-        disable_snapshot_annotations = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#stargz snapshot需要配置</span>
-          discard_unpacked_layers = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#当执行content GC时，是否回收已经unpack的content</span>
-      [plugins.cri.containerd.default_runtime] <span style=color:#080;font-style:italic>#被弃用</span>
-        privileged_without_host_devices = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic># 设置特权模式下时，是否映射主机上设备到容器内</span>
-      [plugins.cri.containerd.untrusted_workload_runtime] <span style=color:#080;font-style:italic>#被弃用</span>
-        privileged_without_host_devices = <span style=color:#a2f;font-weight:700>false</span>
-      [plugins.cri.containerd.runtimes]
-        [plugins.cri.containerd.runtimes.runc]
-          runtime_type = <span style=color:#b44>&#34;io.containerd.runc.v2&#34;</span> <span style=color:#080;font-style:italic>#将被用于解析为具体二进制文件名</span>
-          [plugins.cri.containerd.runtimes.runc.options]
-        <span style=color:#080;font-style:italic># NoPivotRoot disables pivot root when creating a container.</span>
-            NoPivotRoot = <span style=color:#a2f;font-weight:700>false</span>
-        <span style=color:#080;font-style:italic># NoNewKeyring disables new keyring for the container.</span>
-            NoNewKeyring = <span style=color:#a2f;font-weight:700>false</span>
-        <span style=color:#080;font-style:italic># 设置shim cgroup目录，默认是和containerd一起</span>
-            ShimCgroup = <span style=color:#b44>&#34;&#34;</span>
-        <span style=color:#080;font-style:italic># 设置shim log user id.</span>
-            IoUid = <span style=color:#666>0</span>
-        <span style=color:#080;font-style:italic># 设置shim log group id.</span>
-            IoGid = <span style=color:#666>0</span>
-        <span style=color:#080;font-style:italic># 设置二进制文件名，否则将使用type字段</span>
-            BinaryName = <span style=color:#b44>&#34;&#34;</span>
-        <span style=color:#080;font-style:italic># runc的目录，默认为 {state}/runc.</span>
-            Root = <span style=color:#b44>&#34;&#34;</span>
-        <span style=color:#080;font-style:italic># criu 二进制文件路径.</span>
-            CriuPath = <span style=color:#b44>&#34;&#34;</span>
-        <span style=color:#080;font-style:italic># 使用cgroup的systemd 驱动，注意需要和kubelet中同样设置</span>
-            SystemdCgroup = <span style=color:#a2f;font-weight:700>true</span>
-        <span style=color:#080;font-style:italic># CriuImagePath is the criu image path</span>
-            CriuImagePath = <span style=color:#b44>&#34;&#34;</span>
-        <span style=color:#080;font-style:italic># CriuWorkPath is the criu work path.</span>
-            CriuWorkPath = <span style=color:#b44>&#34;&#34;</span>
-          privileged_without_host_devices = <span style=color:#a2f;font-weight:700>false</span>
-        [plugins.cri.containerd.runtimes.gvisor]
-          runtime_type = <span style=color:#b44>&#34;io.containerd.gvisor.v2&#34;</span>
-          pod_annotations =[<span style=color:#b44>&#34;&#34;</span>]
-          container_annotations = [<span style=color:#b44>&#34;&#34;</span>]
-          base_runtime_spec=<span style=color:#b44>&#34;&#34;</span> <span style=color:#080;font-style:italic># 文件绝对路径，且内容为oci runtime文件格式</span>
-        [plugins.cri.containerd.runtimes.firecracker]
-         runtime_type = <span style=color:#b44>&#34;io.containerd.firecracker.v2&#34;</span>
-    [plugins.cri.cni]
-      bin_dir = <span style=color:#b44>&#34;/opt/cni/bin&#34;</span>
-      conf_dir = <span style=color:#b44>&#34;/etc/cni/net.d&#34;</span>
-      max_conf_num = <span style=color:#666>1</span> <span style=color:#080;font-style:italic>#若有多个cni配置文件，则按照此值调用多个cni配置文件</span>
-    [plugins.cri.registry]
-        config_path= <span>/</span>xxx <span style=color:#080;font-style:italic># 目录，若配置该值，则以下内容被忽略</span>
-      [plugins.cri.registry.configs] <span style=color:#080;font-style:italic>#被弃用，使用config_path代替，在1.7后被移除</span>
-        [plugins.cri.registry.configs.<span style=color:#b44>&#34;hub.easystack.io&#34;</span>]
-          [plugins.cri.registry.configs.<span style=color:#b44>&#34;hub.easystack.io&#34;</span>.tls]
-            insecure_skip_verify = <span style=color:#a2f;font-weight:700>true</span>
-      [plugins.cri.registry.mirrors] <span style=color:#080;font-style:italic>#被弃用，使用config_path代替，在1.7后被移除</span>
-        [plugins.cri.registry.mirrors.<span style=color:#b44>&#34;docker.io&#34;</span>]
-          endpoint = [<span style=color:#b44>&#34;https://registry-1.docker.io&#34;</span>]
-        [plugins.cri.registry.mirrors.<span style=color:#b44>&#34;hub.easystack.io&#34;</span>]
-          endpoint = [<span style=color:#b44>&#34;https://hub.easystack.io&#34;</span>]
-</code></pre></div><ul>
-<li>关于仓库目录配置方式</li>
-</ul>
-<div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-fallback data-lang=fallback>config_path= /opt/mycontainerd/hosts
-
-# 目录内容
-.
-├── docker.io
-│   └── hosts.toml
-└── k8s.gcr.io
-    └── hosts.toml
-
-# hosts.toml内容
-server = &#34;https://k8s.gcr.io&#34;
-
-[host.&#34;https://k8s.gcr.io&#34;]
-  skip_verify = true
-  capabilities = [ &#34;pull&#34;, &#34;resolve&#34;, &#34;push&#34; ]
-  ca: &#34;&#34; #文件路径或文件内容
-</code></pre></div>
-</div>
-<div class=tags>
-<a href=https://easystack.github.io/tags/container>container</a>
-</div>
-<div id=comment>
-</div>
-</section>
-</main>
-<footer id=footer>
-<div id=social>
-<a class=symbol href=easystack rel=me target=_blank><svg fill="#bbb" width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>Github</title><desc>Created with Sketch.</desc><defs/><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="Social-Icons---Rounded-Black" transform="translate(-264.000000, -939.000000)"><g id="Github" transform="translate(264.000000, 939.000000)"><path d="M8 72H64c4.418278.0 8-3.581722 8-8V8c0-4.418278-3.581722-8-8-8H8c-4.418278 811624501e-24-8 3.581722-8 8V64c541083001e-24 4.418278 3.581722 8 8 8z" id="Rounded" fill="#bbb"/><path d="M35.9985 13C22.746 13 12 23.7870921 12 37.096644c0 10.6440272 6.876 19.6751861 16.4145 22.8617681C29.6145 60.1797862 30.0525 59.4358488 30.0525 58.7973276 30.0525 58.2250681 30.0315 56.7100863 30.0195 54.6996482c-6.6765 1.4562499-8.085-3.2302544-8.085-3.2302544-1.0905-2.7829884-2.664-3.5239139-2.664-3.5239139C17.091 46.4500754 19.4355 46.4801943 19.4355 46.4801943c2.4075.1701719 3.675 2.4833051 3.675 2.4833051 2.142 3.6820383 5.6175 2.6188404 6.9855 2.0014024C30.3135 49.4077535 30.9345 48.3460615 31.62 47.7436831 26.2905 47.1352808 20.688 45.0691228 20.688 35.8361671c0-2.6308879.9345-4.781379 2.4705-6.4665327C22.911 28.7597262 22.0875 26.3110578 23.3925 22.9934585c0 0 2.016-.6475568 6.6 2.4697516C31.908 24.9285993 33.96 24.6620468 36.0015 24.6515052 38.04 24.6620468 40.0935 24.9285993 42.0105 25.4632101c4.581-3.1173084 6.5925-2.4697516 6.5925-2.4697516C49.9125 26.3110578 49.089 28.7597262 48.8415 29.3696344 50.3805 31.0547881 51.309 33.2052792 51.309 35.8361671c0 9.2555448-5.6115 11.29309-10.9575 11.8894446.860999999999997.7439374 1.629 2.2137408 1.629 4.4621184C41.9805 55.4089489 41.9505 58.0067059 41.9505 58.7973276 41.9505 59.4418726 42.3825 60.1918338 43.6005 59.9554002 53.13 56.7627944 60 47.7376593 60 37.096644 60 23.7870921 49.254 13 35.9985 13" fill="#fff"/></g></g></g></svg>
-</a>
-</div>
-<div class=copyright>
-© Copyright
-2021
-<span class=split><svg fill="#bbb" width="15" height="15" id="heart-15" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><path d="M13.91 6.75c-1.17 2.25-4.3 5.31-6.07 6.94-.1903.1718-.4797.1718-.67.0C5.39 12.06 2.26 9 1.09 6.75-1.48 1.8 5-1.5 7.5 3.45 10-1.5 16.48 1.8 13.91 6.75z"/></svg>
-</span>
-easystack
-</div>
-<div class=powerby>
-Powered by <a href=http://www.gohugo.io/>Hugo</a> Theme By <a href=https://github.com/nodejh/hugo-theme-cactus-plus>nodejh</a>
-</div>
-</footer>
-</body>
-</html>
+<a class=button href=https://easystack.github.io/index.xml>订阅</a></nav><main class=main><section id=single><h1 class=title>Containerd 简介</h1><div class=tip><time datetime="2021-10-09 15:50:43 +0800 +0800">2021年10月09日</time>
+<span class=split>·</span>
+<span>3823字</span>
+<span class=split>·</span>
+<span>8分钟</span></div><aside class=toc><details><summary>Table of Contents</summary><div><nav id=TableOfContents><ul><li><a href=#diff-插件>diff 插件</a></li><li><a href=#scheduler>scheduler</a></li><li><a href=#monitor>monitor</a></li><li><a href=#cgroup>cgroup</a></li><li><a href=#runtime-v1>runtime v1</a></li><li><a href=#runtime-v2>runtime v2</a></li><li><a href=#snapshot>snapshot</a></li></ul><ul><li><a href=#container-image-lease-namespace-服务>container, image, lease, namespace 服务：</a></li><li><a href=#content-服务>content 服务</a></li><li><a href=#task-服务>task 服务</a></li><li><a href=#diff-服务>diff 服务:</a></li><li><a href=#event服务>event服务：</a></li><li><a href=#introspection-服务>introspection 服务:</a></li><li><a href=#healthcheck-服务>healthcheck 服务：</a></li><li><a href=#version服务>version服务：</a></li><li><a href=#opt服务>opt服务：</a></li><li><a href=#server>server</a></li></ul></nav></div></details></aside><div class=content><h1 id=历史>历史 <a href=#%e5%8e%86%e5%8f%b2 class=anchor>🔗</a></h1><ul><li>Docker Daemon从最初集成在docker命令中（1.11版本前），</li><li>独立成单独二进制程序（1.11版本开始）2016.12<ul><li>containerd是容器技术标准化之后的产物，为了能够兼容OCI标准，从Docker Daemon剥离</li><li>containerd分v0.2.x ， v1.x版本<ul><li>v0.2.x 由docker daemon集成</li><li>v1.x 开始支持oci标准</li></ul></li><li>containerd项目地址： github.com/docker/containerd</li></ul></li><li>containerd捐献给cncf 2017.03<ul><li>项目地址修改为 github.com/containerd/containerd</li><li>v1.0.0正式版发布 2017.12 支持OCI接口</li><li>v1.1.0正式版 2018.4 支持CRI接口</li><li>v1.2.0正式版 2018.10 runtime v2稳定</li></ul></li><li>shim<ul><li>shim是一个真实运行的容器的真实载体</li></ul></li></ul><h1 id=架构>架构 <a href=#%e6%9e%b6%e6%9e%84 class=anchor>🔗</a></h1><ul><li>组件如图</li></ul><p><p class=markdown-image><img src=/images/containerd-arch.png alt=1></p></p><h1 id=glossary>glossary <a href=#glossary class=anchor>🔗</a></h1><ul><li><p>服务： 提供grpc服务</p></li><li><p>sandbox：一种特殊容器，主要作用准备容器隔离的环境，包括网络，io目录，cgroup parent</p></li><li><p>container：业务容器，每个进程都由一个task 管理</p></li><li><p>shim：管理器(containerd) 和 runtime的粘和层，因为runc是二进制文件执行，无法常驻内存，使用shim一方面方便管理，另一方面扩展runtime; shim管理 sandbox + container(s)</p></li><li><p>task：代表进程+io</p></li><li><p>runtime v2: 可以理解 task 管理器</p></li></ul><h1 id=服务>服务 <a href=#%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h1><ul><li>每个服务都是plugin方式加入，包括不限于image, runtime, grpc server等</li><li>plugin特点<ul><li>插件URI为 Type+ID，如 <code>io.containerd.snapshotter.v1.overlayfs</code>，io.containerd.snapshotter.v1是Type，overlayfs是ID</li><li>插件类型之间有依赖, 从下向上排序：<ul><li>ContentPlugin， SnapshotPlugin</li><li>MetadataPlugin</li><li>GCPlugin，RuntimePlugin，DiffPlugin</li><li>ServicePlugin</li><li>InternalPlugin，GRPCPlugin</li></ul></li></ul></li><li>数据结构</li></ul><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-fallback data-lang=fallback><span style=display:flex><span>classDiagram
+</span></span><span style=display:flex><span>    class Meta{
+</span></span><span style=display:flex><span>        +&#39;ocispec.Platform&#39; Platforms
+</span></span><span style=display:flex><span>        +&#39;map[string]string&#39; Exports
+</span></span><span style=display:flex><span>        +string[] Capabilities
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    class Plugin{
+</span></span><span style=display:flex><span>        +Registration Registration
+</span></span><span style=display:flex><span>        +Meta Meta
+</span></span><span style=display:flex><span>        +string[] Requires
+</span></span><span style=display:flex><span>        +object Config
+</span></span><span style=display:flex><span>        +Err() error
+</span></span><span style=display:flex><span>        +Instance() (object, error)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    class Registration{
+</span></span><span style=display:flex><span>        +string Type
+</span></span><span style=display:flex><span>        +string ID
+</span></span><span style=display:flex><span>        +string[] Requires
+</span></span><span style=display:flex><span>        +object Config
+</span></span><span style=display:flex><span>        +Init(context) Plugin
+</span></span><span style=display:flex><span>        +URI() string
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><h2 id=diff-插件>diff 插件 <a href=#diff-%e6%8f%92%e4%bb%b6 class=anchor>🔗</a></h2><ul><li>用于snaphost的操作</li><li>diff/walking/plugin目录， DiffPlugin类型，依赖MetadataPlugin</li><li>提供两个方法<ul><li><code>Compare</code> 根据提供的 lower，upper 信息，得到oscispec.Descriptor</li><li><code>Apply</code> 从镜像压缩文件中读取内容，并按序执行多个处理器，主要是校验，解压，自定义插件等</li></ul></li></ul><h2 id=scheduler>scheduler <a href=#scheduler class=anchor>🔗</a></h2><ul><li>调度器，gc/scheduler目录， GCPlugin类型，依赖MetadataPlugin</li><li>配置信息<ul><li>PauseThreshold: 暂停阈值，平均每秒2%的暂停时间，使用该值计算下次等待周期，默认为0.02, 最大值0.5</li><li>DeletionThreshold：删除阈值，在删除多少次之后至少保证发生gc调度，0表示不会被删除触发，默认0</li><li>MutationThreshold： 突变阈值</li><li>ScheduleDelay：调度延迟，当发生手动触发或者阈值触发后，延迟多久才开始GC，默认0ms</li><li>StartupDelay： 慢启动，默认100ms</li></ul></li><li>goroutine<ul><li>gc实际是执行content.GarbageCollect</li></ul></li></ul><h2 id=monitor>monitor <a href=#monitor class=anchor>🔗</a></h2><ul><li>容器的起停状态同步， InternalPlugin类型，依赖ServicePlugin</li><li>goroutine<ul><li>过滤标签 <code>containerd.io/restart.status</code>的container</li><li>对比container和预期状态是否相符</li><li>重新执行start或stop</li></ul></li></ul><h2 id=cgroup>cgroup <a href=#cgroup class=anchor>🔗</a></h2><ul><li>进程oom监听和指标统计，在 metrics/cgroup 目录， TaskMonitorPlugin类型</li><li>作用：task的指标和oom监听</li><li>主要是shim 在使用该模块，shim需要监听 task 是否发生OOM</li></ul><h2 id=runtime-v1>runtime v1 <a href=#runtime-v1 class=anchor>🔗</a></h2><ul><li>容器进程管理器,， RuntimePlugin类型，依赖MetadataPlugin</li><li>配置<ul><li>shim： shim二进制文件地址</li><li>runtime： 被shim使用的runtime二进制文件地址</li><li>no_shim： 直接调用runtime，跳过shim</li><li>shim_debug： 是否打开shim调试</li></ul></li></ul><h2 id=runtime-v2>runtime v2 <a href=#runtime-v2 class=anchor>🔗</a></h2><ul><li>容器进程管理器, RuntimePluginV2类型，依赖MetadataPlugin</li><li>在<a href=https://github.com/containerd/containerd/blob/34fb8d8967595292adce04b53b12ee33499cd6b8/client.go#L102 target=_blank rel=noopener>client</a>中被配置为默认的runtime</li><li>初始化时会执行以下内容<ul><li>创建目录 {root/state}/io.containerd.runtime.v2.task</li><li>读取 {state}/io.containerd.runtime.v2.task目录</li><li>恢复shim 管理</li></ul></li></ul><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-fallback data-lang=fallback><span style=display:flex><span>tips：
+</span></span><span style=display:flex><span>fifo文件ro打开：当无写端，若是nonblocking模式，则返回，否则阻塞
+</span></span><span style=display:flex><span>fifo文件wo打开：当无读端，返回ENXIO，若读端关闭时写数据，则返回SIGPIPE
+</span></span><span style=display:flex><span>fifo文件rw打开：总是成功
+</span></span></code></pre></div><h2 id=snapshot>snapshot <a href=#snapshot class=anchor>🔗</a></h2><ul><li>容器的rootfs管理器，SnapshotPlugin类型</li><li>linux 平台<ul><li>snapshots/{native, overlay, devmapper，btrfs}</li><li>containerd/{aufs,zfs}</li></ul></li><li>windows平台<ul><li>snapshots/{lcow, windows}</li></ul></li></ul><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span><span style=color:#080;font-style:italic># man 8 mount</span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic># references: https://wiki.archlinux.org/title/Overlay_filesystem</span>
+</span></span><span style=display:flex><span>tips:
+</span></span><span style=display:flex><span><span style=color:#666>1</span> overlay 挂载
+</span></span><span style=display:flex><span>mount -t overlay  overlay -o <span style=color:#b8860b>lowerdir</span><span style=color:#666>=</span>/lower:/lower2,upperdir<span style=color:#666>=</span>/upper,workdir<span style=color:#666>=</span>/work  /merged
+</span></span><span style=display:flex><span>// upperdir 一般是可写层
+</span></span><span style=display:flex><span>// workdir 空目录，
+</span></span><span style=display:flex><span><span style=color:#666>2</span> devmapper 挂载
+</span></span><span style=display:flex><span>mount -t ext4 /dev/mapper/xx <span style=color:#666>{</span>target<span style=color:#666>}</span>
+</span></span><span style=display:flex><span><span style=color:#666>3</span> native 挂载
+</span></span><span style=display:flex><span>mount -t <span style=color:#a2f>bind</span> <span style=color:#666>{</span>src<span style=color:#666>}</span> <span style=color:#666>{</span>dst<span style=color:#666>}</span>
+</span></span><span style=display:flex><span><span style=color:#666>4</span> btrfs 
+</span></span><span style=display:flex><span>mount -t btrfs 
+</span></span></code></pre></div><h1 id=services>services <a href=#services class=anchor>🔗</a></h1><ul><li>提供rpc服务和数据库操作等</li><li>services/目录下，具体有以下的内容</li></ul><h2 id=container-image-lease-namespace-服务>container, image, lease, namespace 服务： <a href=#container-image-lease-namespace-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>local.go: 是service Plugin类型，对数据库的操作，以及event的发送</li><li>service.go: 是grpc Plugin类型，提供grpc服务，并使用local内相同接口</li></ul><h2 id=content-服务>content 服务 <a href=#content-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>service.go: 提供grpc服务，CRUD content数据</li><li>contentserver : content具体操作(content)</li></ul><h2 id=task-服务>task 服务 <a href=#task-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>local.go: 调用runtime v2同名接口，包括容器创建，开始，结束，删除，终端，状态等信息</li><li>server.go: 提供grpc服务</li></ul><h2 id=diff-服务>diff 服务: <a href=#diff-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>local.go: 使用diff插件</li><li>service.go: 提供grpc服务</li></ul><h2 id=event服务>event服务： <a href=#event%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>service.go: 提供grpc服务，包括转发，推送，订阅功能</li></ul><h2 id=introspection-服务>introspection 服务: <a href=#introspection-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>service.go: 提供grpc服务，列举注册的plugin</li></ul><h2 id=healthcheck-服务>healthcheck 服务： <a href=#healthcheck-%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>service.go: 提供 grpc服务，检查指定服务的健康</li></ul><h2 id=version服务>version服务： <a href=#version%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>service.go: 提供 grpc服务，检查containerd version</li></ul><h2 id=opt服务>opt服务： <a href=#opt%e6%9c%8d%e5%8a%a1 class=anchor>🔗</a></h2><ul><li>配置目录 root<ul><li>添加 {root}/bin 到环境变量 PATH中</li><li>添加 {root}/lib 到环境变量LD_LIBRARY_PATH中</li></ul></li></ul><h2 id=server>server <a href=#server class=anchor>🔗</a></h2><ul><li>基础plugin，扩展插件的初始化和服务启动<ul><li>流程<ul><li>注册 ContentPlugin插件</li><li>注册 MetadataPlugin插件</li><li>注册 proxy插件(ContentPlugin或SnapshotPlugin类型)</li><li>注册DiffPlugin插件 (stream processor类型)，目前主要是处理 加密的镜像</li></ul></li><li>监听event类型<ul><li>/tasks/oom</li><li>/images/</li></ul></li></ul></li></ul><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml><span style=display:flex><span>version = <span style=color:#666>2</span>
+</span></span><span style=display:flex><span>root = <span style=color:#b44>&#34;/var/lib/mycontainerd&#34;</span> <span style=color:#080;font-style:italic>#持久化目录</span>
+</span></span><span style=display:flex><span>state = <span style=color:#b44>&#34;/var/run/mycontainerd&#34;</span> <span style=color:#080;font-style:italic>#非持久化目录</span>
+</span></span><span style=display:flex><span>oom_score = <span style=color:#666>0</span> <span style=color:#080;font-style:italic># containerd的oom分数</span>
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>[proxy_plugins]
+</span></span><span style=display:flex><span>  [proxy_plugins.stargz]
+</span></span><span style=display:flex><span>    type = <span style=color:#b44>&#34;snapshot&#34;</span> <span style=color:#080;font-style:italic>#支持snapshot和content类型</span>
+</span></span><span style=display:flex><span>    address = <span style=color:#b44>&#34;/run/containerd-stargz-grpc/containerd-stargz-grpc.sock&#34;</span>
+</span></span><span style=display:flex><span>[stream_processors]
+</span></span><span style=display:flex><span>  [stream_processors.<span style=color:#b44>&#34;io.containerd.ocicrypt.decoder.v1.tar.gzip&#34;</span>]
+</span></span><span style=display:flex><span>    accepts = [<span style=color:#b44>&#34;application/vnd.oci.image.layer.v1.tar+gzip+encrypted&#34;</span>]
+</span></span><span style=display:flex><span>    returns = <span style=color:#b44>&#34;application/vnd.oci.image.layer.v1.tar+gzip&#34;</span>
+</span></span><span style=display:flex><span>    path = <span style=color:#b44>&#34;/usr/local/bin/ctd-decoder&#34;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[cgroup]
+</span></span><span style=display:flex><span>  path = <span style=color:#b44>&#34;&#34;</span> <span style=color:#080;font-style:italic># containerd 所在路径，去除 ‘/sys/fs/cgroup/&#39;前缀的</span>
+</span></span><span style=display:flex><span>[plugins]
+</span></span><span style=display:flex><span>  [plugins.<span style=color:#b44>&#34;io.containerd.gc.v1.scheduler&#34;</span>]
+</span></span><span style=display:flex><span>    pause_threshold = <span style=color:#666>0.02</span>
+</span></span><span style=display:flex><span>    deletion_threshold = <span style=color:#666>0</span>
+</span></span><span style=display:flex><span>    mutation_threshold = <span style=color:#666>100</span>
+</span></span><span style=display:flex><span>    schedule_delay = <span style=color:#b44>&#34;0s&#34;</span>
+</span></span><span style=display:flex><span>    startup_delay = <span style=color:#b44>&#34;100ms&#34;</span>
+</span></span><span style=display:flex><span>  [plugins.<span style=color:#b44>&#34;io.containerd.internal.v1.restart&#34;</span>]
+</span></span><span style=display:flex><span>    interval = <span style=color:#b44>&#34;10s&#34;</span> <span style=color:#080;font-style:italic>#restart插件，遍历container的周期</span>
+</span></span><span style=display:flex><span>  [plugins.<span style=color:#b44>&#34;io.containerd.metadata.v1.bolt&#34;</span>]
+</span></span><span style=display:flex><span>    content_sharing_policy = <span style=color:#b44>&#34;shared&#34;</span> <span style=color:#080;font-style:italic>#content策略，shared则所有不同ns的都可以访问，另一种是isolated</span>
+</span></span><span style=display:flex><span>  [plugins.<span style=color:#b44>&#34;io.containerd.monitor.v1.cgroups&#34;</span>]
+</span></span><span style=display:flex><span>    no_prometheus = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>  [plugins.<span style=color:#b44>&#34;io.containerd.runtime.v1.linux&#34;</span>]
+</span></span><span style=display:flex><span>    shim = <span style=color:#b44>&#34;containerd-shim&#34;</span>
+</span></span><span style=display:flex><span>    runtime = <span style=color:#b44>&#34;runc&#34;</span>
+</span></span><span style=display:flex><span>    runtime_root = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>    no_shim = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>    shim_debug = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>  [plugins.<span style=color:#b44>&#34;io.containerd.runtime.v2.task&#34;</span>]
+</span></span><span style=display:flex><span>    platforms = [<span style=color:#b44>&#34;linux/amd64&#34;</span>] <span style=color:#080;font-style:italic>#镜像支持的平台类型</span>
+</span></span><span style=display:flex><span>  [plugins.<span style=color:#b44>&#34;io.containerd.service.v1.diff-service&#34;</span>]
+</span></span><span style=display:flex><span>    default = [<span style=color:#b44>&#34;walking&#34;</span>] <span style=color:#080;font-style:italic>#walking是内置的diff插件</span>
+</span></span></code></pre></div><h1 id=cri>cri <a href=#cri class=anchor>🔗</a></h1><ul><li>GRPCPlugin类型，依赖ServicePlugin</li><li>作用: 提供cri接口， cri 常见配置</li></ul><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml><span style=display:flex><span>[plugins.cri]
+</span></span><span style=display:flex><span>    disable_tcp_service = <span style=color:#a2f;font-weight:700>true</span>
+</span></span><span style=display:flex><span>    stream_server_address = <span style=color:#b44>&#34;127.0.0.1&#34;</span> <span style=color:#080;font-style:italic># unix 监听地址</span>
+</span></span><span style=display:flex><span>    stream_server_port = <span style=color:#b44>&#34;0&#34;</span> <span style=color:#080;font-style:italic># unix 监听端口,0是随机分配</span>
+</span></span><span style=display:flex><span>    stream_idle_timeout = <span style=color:#b44>&#34;4h0m0s&#34;</span> <span style=color:#080;font-style:italic>#idle连接超时时间</span>
+</span></span><span style=display:flex><span>    enable_selinux = <span style=color:#a2f;font-weight:700>false</span> 
+</span></span><span style=display:flex><span>    sandbox_image = <span style=color:#b44>&#34;hub.easystack.io/captain/pause-amd64:3.0&#34;</span>
+</span></span><span style=display:flex><span>    stats_collect_period = <span style=color:#666>10</span> <span style=color:#080;font-style:italic>#单位秒，snapshot状态收集</span>
+</span></span><span style=display:flex><span>    systemd_cgroup = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#只适用io.containerd.runtime.v1.linux</span>
+</span></span><span style=display:flex><span>    enable_tls_streaming = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic># 是否支持tls</span>
+</span></span><span style=display:flex><span>    max_container_log_line_size = <span style=color:#666>16384</span> <span style=color:#080;font-style:italic>#单行日志最大byte</span>
+</span></span><span style=display:flex><span>    disable_cgroup = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic># 当rootless 运行时，需要设置为true</span>
+</span></span><span style=display:flex><span>    disable_apparmor = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>    restrict_oom_score_adj = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>    netns_mounts_under_state_dir = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#将net ns设置到{state}/netns目录下,而不是默认的/run/netns下</span>
+</span></span><span style=display:flex><span>    max_concurrent_downloads = <span style=color:#666>3</span>
+</span></span><span style=display:flex><span>    unset_seccomp_profile = <span style=color:#b44>&#34;&#34;</span> <span style=color:#080;font-style:italic>#seccomp配置文件</span>
+</span></span><span style=display:flex><span>    disable_proc_mount = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#禁用k8s ProcMount， 对于k8s &lt;= 1.11时，必须设置为true</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>      tolerate_missing_hugetlb_controller = <span style=color:#a2f;font-weight:700>true</span> <span style=color:#080;font-style:italic>#1.5+,对于k8s &lt;1.19,不支持配置hugetlb</span>
+</span></span><span style=display:flex><span>      disable_hugetlb_controller = <span style=color:#a2f;font-weight:700>true</span> <span style=color:#080;font-style:italic>#1.5+, 适用于rootless+cgroupv2+systemd</span>
+</span></span><span style=display:flex><span>      ignore_image_defined_volumes = <span style=color:#a2f;font-weight:700>true</span> <span style=color:#080;font-style:italic>#1.5+，创建container时，忽略image中定义的volume</span>
+</span></span><span style=display:flex><span>    [plugins.cri.x509_key_pair_streaming] <span style=color:#080;font-style:italic>#stream tls配置</span>
+</span></span><span style=display:flex><span>      tls_cert_file = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>      tls_key_file = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>    [plugins.cri.image_decryption] <span style=color:#080;font-style:italic># 解密镜像，参考项目 github.com/containerd/imgcrypt</span>
+</span></span><span style=display:flex><span>      key_model = none
+</span></span><span style=display:flex><span>    [plugins.cri.containerd]
+</span></span><span style=display:flex><span>      snapshotter = <span style=color:#b44>&#34;overlayfs&#34;</span> <span style=color:#080;font-style:italic>#使用何种snapshot</span>
+</span></span><span style=display:flex><span>      default_runtime_name = <span style=color:#b44>&#34;runc&#34;</span> <span style=color:#080;font-style:italic>#默认runtime，必须出现在后续的列表中</span>
+</span></span><span style=display:flex><span>      no_pivot = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#只适用io.containerd.runtime.v1.linux</span>
+</span></span><span style=display:flex><span>        disable_snapshot_annotations = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#stargz snapshot需要配置</span>
+</span></span><span style=display:flex><span>          discard_unpacked_layers = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic>#当执行content GC时，是否回收已经unpack的content</span>
+</span></span><span style=display:flex><span>      [plugins.cri.containerd.default_runtime] <span style=color:#080;font-style:italic>#被弃用</span>
+</span></span><span style=display:flex><span>        privileged_without_host_devices = <span style=color:#a2f;font-weight:700>false</span> <span style=color:#080;font-style:italic># 设置特权模式下时，是否映射主机上设备到容器内</span>
+</span></span><span style=display:flex><span>      [plugins.cri.containerd.untrusted_workload_runtime] <span style=color:#080;font-style:italic>#被弃用</span>
+</span></span><span style=display:flex><span>        privileged_without_host_devices = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>      [plugins.cri.containerd.runtimes]
+</span></span><span style=display:flex><span>        [plugins.cri.containerd.runtimes.runc]
+</span></span><span style=display:flex><span>          runtime_type = <span style=color:#b44>&#34;io.containerd.runc.v2&#34;</span> <span style=color:#080;font-style:italic>#将被用于解析为具体二进制文件名</span>
+</span></span><span style=display:flex><span>          [plugins.cri.containerd.runtimes.runc.options]
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># NoPivotRoot disables pivot root when creating a container.</span>
+</span></span><span style=display:flex><span>            NoPivotRoot = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># NoNewKeyring disables new keyring for the container.</span>
+</span></span><span style=display:flex><span>            NoNewKeyring = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># 设置shim cgroup目录，默认是和containerd一起</span>
+</span></span><span style=display:flex><span>            ShimCgroup = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># 设置shim log user id.</span>
+</span></span><span style=display:flex><span>            IoUid = <span style=color:#666>0</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># 设置shim log group id.</span>
+</span></span><span style=display:flex><span>            IoGid = <span style=color:#666>0</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># 设置二进制文件名，否则将使用type字段</span>
+</span></span><span style=display:flex><span>            BinaryName = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># runc的目录，默认为 {state}/runc.</span>
+</span></span><span style=display:flex><span>            Root = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># criu 二进制文件路径.</span>
+</span></span><span style=display:flex><span>            CriuPath = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># 使用cgroup的systemd 驱动，注意需要和kubelet中同样设置</span>
+</span></span><span style=display:flex><span>            SystemdCgroup = <span style=color:#a2f;font-weight:700>true</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># CriuImagePath is the criu image path</span>
+</span></span><span style=display:flex><span>            CriuImagePath = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic># CriuWorkPath is the criu work path.</span>
+</span></span><span style=display:flex><span>            CriuWorkPath = <span style=color:#b44>&#34;&#34;</span>
+</span></span><span style=display:flex><span>          privileged_without_host_devices = <span style=color:#a2f;font-weight:700>false</span>
+</span></span><span style=display:flex><span>        [plugins.cri.containerd.runtimes.gvisor]
+</span></span><span style=display:flex><span>          runtime_type = <span style=color:#b44>&#34;io.containerd.gvisor.v2&#34;</span>
+</span></span><span style=display:flex><span>          pod_annotations =[<span style=color:#b44>&#34;&#34;</span>]
+</span></span><span style=display:flex><span>          container_annotations = [<span style=color:#b44>&#34;&#34;</span>]
+</span></span><span style=display:flex><span>          base_runtime_spec=<span style=color:#b44>&#34;&#34;</span> <span style=color:#080;font-style:italic># 文件绝对路径，且内容为oci runtime文件格式</span>
+</span></span><span style=display:flex><span>        [plugins.cri.containerd.runtimes.firecracker]
+</span></span><span style=display:flex><span>         runtime_type = <span style=color:#b44>&#34;io.containerd.firecracker.v2&#34;</span>
+</span></span><span style=display:flex><span>    [plugins.cri.cni]
+</span></span><span style=display:flex><span>      bin_dir = <span style=color:#b44>&#34;/opt/cni/bin&#34;</span>
+</span></span><span style=display:flex><span>      conf_dir = <span style=color:#b44>&#34;/etc/cni/net.d&#34;</span>
+</span></span><span style=display:flex><span>      max_conf_num = <span style=color:#666>1</span> <span style=color:#080;font-style:italic>#若有多个cni配置文件，则按照此值调用多个cni配置文件</span>
+</span></span><span style=display:flex><span>    [plugins.cri.registry]
+</span></span><span style=display:flex><span>        config_path= <span>/</span>xxx <span style=color:#080;font-style:italic># 目录，若配置该值，则以下内容被忽略</span>
+</span></span><span style=display:flex><span>      [plugins.cri.registry.configs] <span style=color:#080;font-style:italic>#被弃用，使用config_path代替，在1.7后被移除</span>
+</span></span><span style=display:flex><span>        [plugins.cri.registry.configs.<span style=color:#b44>&#34;hub.easystack.io&#34;</span>]
+</span></span><span style=display:flex><span>          [plugins.cri.registry.configs.<span style=color:#b44>&#34;hub.easystack.io&#34;</span>.tls]
+</span></span><span style=display:flex><span>            insecure_skip_verify = <span style=color:#a2f;font-weight:700>true</span>
+</span></span><span style=display:flex><span>      [plugins.cri.registry.mirrors] <span style=color:#080;font-style:italic>#被弃用，使用config_path代替，在1.7后被移除</span>
+</span></span><span style=display:flex><span>        [plugins.cri.registry.mirrors.<span style=color:#b44>&#34;docker.io&#34;</span>]
+</span></span><span style=display:flex><span>          endpoint = [<span style=color:#b44>&#34;https://registry-1.docker.io&#34;</span>]
+</span></span><span style=display:flex><span>        [plugins.cri.registry.mirrors.<span style=color:#b44>&#34;hub.easystack.io&#34;</span>]
+</span></span><span style=display:flex><span>          endpoint = [<span style=color:#b44>&#34;https://hub.easystack.io&#34;</span>]
+</span></span></code></pre></div><ul><li>关于仓库目录配置方式</li></ul><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-fallback data-lang=fallback><span style=display:flex><span>config_path= /opt/mycontainerd/hosts
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span># 目录内容
+</span></span><span style=display:flex><span>.
+</span></span><span style=display:flex><span>├── docker.io
+</span></span><span style=display:flex><span>│   └── hosts.toml
+</span></span><span style=display:flex><span>└── k8s.gcr.io
+</span></span><span style=display:flex><span>    └── hosts.toml
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span># hosts.toml内容
+</span></span><span style=display:flex><span>server = &#34;https://k8s.gcr.io&#34;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[host.&#34;https://k8s.gcr.io&#34;]
+</span></span><span style=display:flex><span>  skip_verify = true
+</span></span><span style=display:flex><span>  capabilities = [ &#34;pull&#34;, &#34;resolve&#34;, &#34;push&#34; ]
+</span></span><span style=display:flex><span>  ca: &#34;&#34; #文件路径或文件内容
+</span></span></code></pre></div></div><div class=tags><a href=https://easystack.github.io/tags/container>container</a></div><div id=comment></div></section></main><footer id=footer><div id=social><a class=symbol href=easystack rel=me target=_blank><svg fill="#bbb" width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>Github</title><desc>Created with Sketch.</desc><defs/><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="Social-Icons---Rounded-Black" transform="translate(-264.000000, -939.000000)"><g id="Github" transform="translate(264.000000, 939.000000)"><path d="M8 72H64c4.418278.0 8-3.581722 8-8V8c0-4.418278-3.581722-8-8-8H8c-4.418278 811624501e-24-8 3.581722-8 8V64c541083001e-24 4.418278 3.581722 8 8 8z" id="Rounded" fill="#bbb"/><path d="M35.9985 13C22.746 13 12 23.7870921 12 37.096644c0 10.6440272 6.876 19.6751861 16.4145 22.8617681C29.6145 60.1797862 30.0525 59.4358488 30.0525 58.7973276 30.0525 58.2250681 30.0315 56.7100863 30.0195 54.6996482c-6.6765 1.4562499-8.085-3.2302544-8.085-3.2302544-1.0905-2.7829884-2.664-3.5239139-2.664-3.5239139C17.091 46.4500754 19.4355 46.4801943 19.4355 46.4801943c2.4075.1701719 3.675 2.4833051 3.675 2.4833051 2.142 3.6820383 5.6175 2.6188404 6.9855 2.0014024C30.3135 49.4077535 30.9345 48.3460615 31.62 47.7436831 26.2905 47.1352808 20.688 45.0691228 20.688 35.8361671c0-2.6308879.9345-4.781379 2.4705-6.4665327C22.911 28.7597262 22.0875 26.3110578 23.3925 22.9934585c0 0 2.016-.6475568 6.6 2.4697516C31.908 24.9285993 33.96 24.6620468 36.0015 24.6515052 38.04 24.6620468 40.0935 24.9285993 42.0105 25.4632101c4.581-3.1173084 6.5925-2.4697516 6.5925-2.4697516C49.9125 26.3110578 49.089 28.7597262 48.8415 29.3696344 50.3805 31.0547881 51.309 33.2052792 51.309 35.8361671c0 9.2555448-5.6115 11.29309-10.9575 11.8894446.860999999999997.7439374 1.629 2.2137408 1.629 4.4621184C41.9805 55.4089489 41.9505 58.0067059 41.9505 58.7973276 41.9505 59.4418726 42.3825 60.1918338 43.6005 59.9554002 53.13 56.7627944 60 47.7376593 60 37.096644 60 23.7870921 49.254 13 35.9985 13" fill="#fff"/></g></g></g></svg></a></div><div class=copyright>© Copyright
+2022
+<span class=split><svg fill="#bbb" width="15" height="15" id="heart-15" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><path d="M13.91 6.75c-1.17 2.25-4.3 5.31-6.07 6.94-.1903.1718-.4797.1718-.67.0C5.39 12.06 2.26 9 1.09 6.75-1.48 1.8 5-1.5 7.5 3.45 10-1.5 16.48 1.8 13.91 6.75z"/></svg></span>easystack</div><div class=powerby>Powered by <a href=http://www.gohugo.io/>Hugo</a> Theme By <a href=https://github.com/nodejh/hugo-theme-cactus-plus>nodejh</a></div></footer></body></html>
