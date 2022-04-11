@@ -1,0 +1,131 @@
+<!doctype html><html lang=zh><head><title>TypeScript项目实践——在使用TypeScript中，配合VSCode可维护性、开发效率有哪些提升？ | easystack</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="TypeScript 项目实践 🔗该系列文章主要是总结TypeScript在项目中实践经验，遇到什么样的问题，针对具体问题的解决方案，目的是给希望使用或正在使用T"><meta name=generator content="Hugo 0.96.0"><meta name=ROBOTS content="NOINDEX, NOFOLLOW"><link rel=stylesheet href=/css/style.css><link rel="shortcut icon" href=/images/favicon.ico type=image/x-icon></head><body><nav class=navigation><a href=/><span class=arrow>←</span>首页</a>
+<a href=/posts>归档</a>
+<a href=/tags>标签</a>
+<a href=/about>关于</a>
+<a class=button href=https://easystack.github.io/index.xml>订阅</a></nav><main class=main><section id=single><h1 class=title>TypeScript项目实践——在使用TypeScript中，配合VSCode可维护性、开发效率有哪些提升？</h1><div class=tip><time datetime="2022-04-06 14:46:52 +0800 +0800">2022年04月06日</time>
+<span class=split>·</span>
+<span>1888字</span>
+<span class=split>·</span>
+<span>4分钟</span></div><aside class=toc><details><summary>Table of Contents</summary><div><nav id=TableOfContents><ul><li><a href=#在使用typescript中配合vscode可维护性开发效率有哪些提升>在使用TypeScript中，配合VSCode可维护性、开发效率有哪些提升？</a><ul><li><a href=#友好的类型提示错误检测>友好的类型提示、错误检测</a></li><li><a href=#友好的代码调用关系树以及ide代码重构工具支持>友好的代码调用关系树，以及IDE代码重构工具支持</a></li><li><a href=#针对大量功能相似但又有区别抽象能力>针对大量功能相似但又有区别抽象能力</a></li><li><a href=#总结>总结</a></li></ul></li></ul></nav></div></details></aside><div class=content><h1 id=typescript-项目实践>TypeScript 项目实践 <a href=#typescript-%e9%a1%b9%e7%9b%ae%e5%ae%9e%e8%b7%b5 class=anchor>🔗</a></h1><p>该系列文章主要是总结TypeScript在项目中实践经验，遇到什么样的问题，针对具体问题的解决方案，目的是给希望使用或正在使用TypeScript的同行提供参考，高效正确的使用TypeScript。</p><h2 id=在使用typescript中配合vscode可维护性开发效率有哪些提升>在使用TypeScript中，配合VSCode可维护性、开发效率有哪些提升？ <a href=#%e5%9c%a8%e4%bd%bf%e7%94%a8typescript%e4%b8%ad%e9%85%8d%e5%90%88vscode%e5%8f%af%e7%bb%b4%e6%8a%a4%e6%80%a7%e5%bc%80%e5%8f%91%e6%95%88%e7%8e%87%e6%9c%89%e5%93%aa%e4%ba%9b%e6%8f%90%e5%8d%87 class=anchor>🔗</a></h2><p>本文主要总结我们在开发过程遇到代码维护性、开发效率方面比较典型的问题，以及使用TypeScript带来的改善。</p><h3 id=友好的类型提示错误检测>友好的类型提示、错误检测 <a href=#%e5%8f%8b%e5%a5%bd%e7%9a%84%e7%b1%bb%e5%9e%8b%e6%8f%90%e7%a4%ba%e9%94%99%e8%af%af%e6%a3%80%e6%b5%8b class=anchor>🔗</a></h3><p>在维护一个项目经常遇到各自各样问题，但最常用的解决办法肯定有一种是：</p><blockquote><p>console.log 输出看下参数（或者下个断点）</p></blockquote><p>分析下为什么总要看参数，原因一般也就这几种：</p><blockquote><p>代码不是我写的，搞不清楚接口参数。</p></blockquote><blockquote><p>很久之前的写的，接口参数定义忘记了。</p></blockquote><blockquote><p>Javascript就这样，不下断点，能知道参数最终结构啊！（这是被坑过的。。。js自由的代价，代码不执行到当前行，永远是可变的数据结构）</p></blockquote><p>例如，这样一段JavaScript代码：</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#a2f;font-weight:700>const</span> createModal <span style=color:#666>=</span> options =&gt; {
+</span></span><span style=display:flex><span> <span style=color:#080;font-style:italic>//... 
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>}
+</span></span></code></pre></div><p>在通常业务开发中很难看到清楚options参数结构描述，即使有，在多个版本迭代后也可能变了不准确，如何解决这些问题呐？在正确的使用TypeScript后，这些大部分可以得到改善，比如上面的代码使用TypeScript实现：</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-TypeScript data-lang=TypeScript><span style=display:flex><span><span style=color:#a2f;font-weight:700>interface</span> Options {
+</span></span><span style=display:flex><span>  title?: <span style=color:#0b0;font-weight:700>string</span>;
+</span></span><span style=display:flex><span>  content?: <span style=color:#0b0;font-weight:700>string</span>;
+</span></span><span style=display:flex><span>  onOK<span style=color:#666>:</span> ()<span style=color:#666>=&gt;</span> <span style=color:#a2f;font-weight:700>void</span>;
+</span></span><span style=display:flex><span>  onCancel<span style=color:#666>:</span> ()<span style=color:#666>=&gt;</span> <span style=color:#a2f;font-weight:700>void</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a2f;font-weight:700>const</span> createModal <span style=color:#666>=</span> (options: <span style=color:#0b0;font-weight:700>Options</span>)<span style=color:#666>=&gt;</span> {
+</span></span><span style=display:flex><span> <span style=color:#080;font-style:italic>//... 
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>}
+</span></span></code></pre></div><p>通过阅读上面的代码，可以清楚的了解这个方法的参数结构，以及是否必传、参数值类型等信息，再配合VSCode可以得到这样的使用体验：<p class=markdown-image><img src=/images/typescript/4651df33-64c9-4728-8e74-59cc13f9785b.gif alt></p></p><p>而且在TypeScript中还有枚举之类特性，可以让常量定义提示更准确，修改更便利，在编码过程中变量的值、函数入参出参数、对象的成员，可以快速、清楚知道，对开发效率的提高，体验过都会离不开。</p><h3 id=友好的代码调用关系树以及ide代码重构工具支持>友好的代码调用关系树，以及IDE代码重构工具支持 <a href=#%e5%8f%8b%e5%a5%bd%e7%9a%84%e4%bb%a3%e7%a0%81%e8%b0%83%e7%94%a8%e5%85%b3%e7%b3%bb%e6%a0%91%e4%bb%a5%e5%8f%8aide%e4%bb%a3%e7%a0%81%e9%87%8d%e6%9e%84%e5%b7%a5%e5%85%b7%e6%94%af%e6%8c%81 class=anchor>🔗</a></h3><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-TypeScript data-lang=TypeScript><span style=display:flex><span><span style=color:#080;font-style:italic>// 1.公共方法
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>const</span> createForm <span style=color:#666>=</span> options <span style=color:#666>=&gt;</span> {
+</span></span><span style=display:flex><span>  options.fields.forEach(field<span style=color:#666>=&gt;</span>{
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>if</span>(field.inputType <span style=color:#666>===</span> <span style=color:#b44>&#39;text&#39;</span>){    
+</span></span><span style=display:flex><span>      <span style=color:#080;font-style:italic>// TODO ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>if</span>(field.inputType <span style=color:#666>===</span> <span style=color:#b44>&#39;radio&#39;</span>){    
+</span></span><span style=display:flex><span>      <span style=color:#080;font-style:italic>// TODO: ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    }
+</span></span><span style=display:flex><span>  })
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>createForm({ fields<span style=color:#666>:</span>[{inputType<span style=color:#666>:</span> <span style=color:#b44>&#39;text&#39;</span>}] });
+</span></span><span style=display:flex><span>createForm({ fields<span style=color:#666>:</span>[{inputType<span style=color:#666>:</span> <span style=color:#b44>&#39;radio&#39;</span>}] });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// 2.业务接口变动
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>
+</span></span><span style=display:flex><span><span style=color:#a2f;font-weight:700>function</span> fetchUserInfo(){
+</span></span><span style=display:flex><span>  <span style=color:#080;font-style:italic>// TODO: ajax request server
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  
+</span></span><span style=display:flex><span>  <span style=color:#a2f;font-weight:700>const</span> responseJson <span style=color:#666>=</span> {
+</span></span><span style=display:flex><span>    username<span style=color:#666>:</span> <span style=color:#b44>&#39;test1&#39;</span>,
+</span></span><span style=display:flex><span>    realname<span style=color:#666>:</span> <span style=color:#b44>&#39;test1_nickname&#39;</span>
+</span></span><span style=display:flex><span>  };
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>  <span style=color:#a2f;font-weight:700>return</span> Promise.resolve(responseJson)
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// calls 
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>var</span> user <span style=color:#666>=</span> <span style=color:#a2f;font-weight:700>await</span> fetchUserInfo();
+</span></span><span style=display:flex><span><span style=color:#a2f;font-weight:700>var</span> realname <span style=color:#666>=</span> user.realname;
+</span></span></code></pre></div><p>像上面的示例代码中的两段代码，第一段如果要增强或者优化公共方法的options ，第二段出现需求变更导致接口数据调整，在前端代码中需要做的改动很简单但量却很大的，常规手段就是查找替换，不熟悉代码的人要改动就很难评估影响。在TypeScript中可以怎么解决这样的问题，首页要正确的声明类型，然后在使用VSCode更改代码可以这样：</p><p><p class=markdown-image><img src=/images/typescript/4651df33-64c9-4728-8e74-59cc13f9785b.gif alt></p><p class=markdown-image><img src=/images/typescript/bc25b3d4-f0b4-4814-936e-2f7aaab54e79.gif alt></p></p><blockquote><p>快速一键改名，变量、方法、</p></blockquote><blockquote><p>参数变更，快速检测相关引用通知错误提示</p></blockquote><blockquote><p>快速查找方法引用</p></blockquote><p>有这些功能支持后，优化重构代码的便利可以大大提升，可以随着业务变化对代码进行一定范围的重构，便于提高代码质量。</p><h3 id=针对大量功能相似但又有区别抽象能力>针对大量功能相似但又有区别抽象能力 <a href=#%e9%92%88%e5%af%b9%e5%a4%a7%e9%87%8f%e5%8a%9f%e8%83%bd%e7%9b%b8%e4%bc%bc%e4%bd%86%e5%8f%88%e6%9c%89%e5%8c%ba%e5%88%ab%e6%8a%bd%e8%b1%a1%e8%83%bd%e5%8a%9b class=anchor>🔗</a></h3><p><p class=markdown-image><img src=/images/typescript/dd3b9cf9-7983-409e-8cb0-2db028ca87a9.png alt></p><p class=markdown-image><img src=/images/typescript/dd9133f3-d2c5-4b6b-9f02-bc9693cc233e.png alt></p></p><p>像这样一个管理功能，增删改查很常见，在一团队里实现的人不同就有不同的设计，比如这样：</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-TypeScript data-lang=TypeScript><span style=display:flex><span><span style=color:#080;font-style:italic>// coder a ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>class</span> ListAComponent {
+</span></span><span style=display:flex><span>  list<span style=color:#666>=</span>[];
+</span></span><span style=display:flex><span>  query(){
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: validate filter ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: fetch data ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: update list ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// coder b ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>class</span> ListBComponent {
+</span></span><span style=display:flex><span>  data<span style=color:#666>=</span>[];
+</span></span><span style=display:flex><span>  search(){
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: validate filter ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: fetch data ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: update list ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// coder c ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>class</span> ListCComponent {
+</span></span><span style=display:flex><span>  dataSet<span style=color:#666>=</span>[];
+</span></span><span style=display:flex><span>  load(){
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: validate filter ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: fetch data ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: update list ...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// ...
+</span></span></span></code></pre></div><p>每个人都有自己的实践，其中的逻辑也有很多相似，这样容易造成一个结果，维护一段代码就要熟悉一种风格，在团队成员快速成长的过程中更是会不断变化着，但解决这种问题的办法很早就有了，为什么很少有人用呐，JavaScript缺少个关键字抽象以及配套的IDE支持，不过TypeScript中实现了，下面看一下用TypeScript怎么解决上面的问题以及能减少重复逻辑：</p><p>首先，我们根据上面的列表业务进行抽象定义公共逻辑，并定义抽象方法为列表不同部分预留需要实现接口；</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-TypeScript data-lang=TypeScript><span style=display:flex><span><span style=color:#a2f;font-weight:700>abstract</span> <span style=color:#a2f;font-weight:700>class</span> ListComponent&lt;<span style=color:green;font-weight:700>Row</span><span>,</span> <span style=color:#b44>Filter</span>&gt; {
+</span></span><span style=display:flex><span>  list <span style=color:#666>=</span> <span style=color:#a2f;font-weight:700>new</span> <span style=color:#a2f>Array</span>&lt;<span style=color:green;font-weight:700>Row</span>&gt;();
+</span></span><span style=display:flex><span>  loading <span style=color:#666>=</span> <span style=color:#a2f;font-weight:700>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  onSearch()<span style=color:#666>:</span> Promise&lt;<span style=color:green;font-weight:700>void</span>&gt; {
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// validate filter
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    <span style=color:#a2f;font-weight:700>if</span> (<span style=color:#666>!</span><span style=color:#a2f;font-weight:700>this</span>.checkFilter(<span style=color:#a2f;font-weight:700>this</span>.filter)) {
+</span></span><span style=display:flex><span>      <span style=color:#a2f;font-weight:700>return</span> Promise.resolve();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>this</span>.loading <span style=color:#666>=</span> <span style=color:#a2f;font-weight:700>true</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// fetch data
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    <span style=color:#a2f;font-weight:700>return</span> <span style=color:#a2f;font-weight:700>this</span>
+</span></span><span style=display:flex><span>      .search(<span style=color:#a2f;font-weight:700>this</span>.filter)
+</span></span><span style=display:flex><span>      .then((rows) <span style=color:#666>=&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic>// update list
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>        <span style=color:#a2f;font-weight:700>this</span>.list <span style=color:#666>=</span> rows;
+</span></span><span style=display:flex><span>        <span style=color:#a2f;font-weight:700>this</span>.loading <span style=color:#666>=</span> <span style=color:#a2f;font-weight:700>false</span>;
+</span></span><span style=display:flex><span>      })
+</span></span><span style=display:flex><span>      .<span style=color:#a2f;font-weight:700>catch</span>(error <span style=color:#666>=&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#080;font-style:italic>// update list (error handle)
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>        <span style=color:#a2f;font-weight:700>this</span>.list <span style=color:#666>=</span> [];
+</span></span><span style=display:flex><span>        <span style=color:#a2f;font-weight:700>this</span>.loading <span style=color:#666>=</span> <span style=color:#a2f;font-weight:700>false</span>;
+</span></span><span style=display:flex><span>        <span style=color:#a2f;font-weight:700>this</span>.toast(error.message);
+</span></span><span style=display:flex><span>      })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  toast(message: <span style=color:#0b0;font-weight:700>string</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>// TODO: toast message
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  };
+</span></span><span style=display:flex><span>  <span style=color:#a2f;font-weight:700>abstract</span> filter: <span style=color:#0b0;font-weight:700>Filter</span>;
+</span></span><span style=display:flex><span>  <span style=color:#a2f;font-weight:700>protected</span> <span style=color:#a2f;font-weight:700>abstract</span> checkFilter(filter: <span style=color:#0b0;font-weight:700>Filter</span>)<span style=color:#666>:</span> <span style=color:#a2f;font-weight:700>boolean</span>;
+</span></span><span style=display:flex><span>  <span style=color:#a2f;font-weight:700>protected</span> <span style=color:#a2f;font-weight:700>abstract</span> search(filter: <span style=color:#0b0;font-weight:700>Filter</span>)<span style=color:#666>:</span> Promise&lt;<span style=color:green;font-weight:700>Row</span><span>[]</span>&gt;;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后，列表去继承功能并实现接口，像下面这样:<p class=markdown-image><img src=/images/typescript/bffb582b-14b9-45d0-a596-eaa43e303782.gif alt></p></p><p>配合IDE可以快速得到我们需要做的事情，只关注实现不同的业务逻辑、定义显示的数据结构、以及显示部分，同时提升项目可维护性，类似的功能可以得到一样的接口就能更快速的理解逻辑。</p><h3 id=总结>总结 <a href=#%e6%80%bb%e7%bb%93 class=anchor>🔗</a></h3><p>以上是我在前端代码维护中遇到问题，以及在使用正确使用TypeScript定义类型后如何解决，这里强调下要正确使用，因为TypeScript的一个特色是JavaScript类型的超集，它可以编译成纯JavaScript ,所以完全是可以在按照JavaScript的方式去用，我想这本意是让使用者快速适应，但是实际应用中会造成另一个问题没有类型，按照JavaScript的方式编码有时候会没有类型声明，会产生很多any 、unknown 类型，这个一定要在项目禁止，最次也要减少影响范围，不然上面的一切美好可能都会成为虚妄。</p></div><div class=tags><a href=https://easystack.github.io/tags/%E5%89%8D%E7%AB%AF>前端</a>
+<a href=https://easystack.github.io/tags/typescript>TypeScript</a></div><div id=comment></div></section></main><footer id=footer><div id=social><a class=symbol href=easystack rel=me target=_blank><svg fill="#bbb" width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>Github</title><desc>Created with Sketch.</desc><defs/><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="Social-Icons---Rounded-Black" transform="translate(-264.000000, -939.000000)"><g id="Github" transform="translate(264.000000, 939.000000)"><path d="M8 72H64c4.418278.0 8-3.581722 8-8V8c0-4.418278-3.581722-8-8-8H8c-4.418278 811624501e-24-8 3.581722-8 8V64c541083001e-24 4.418278 3.581722 8 8 8z" id="Rounded" fill="#bbb"/><path d="M35.9985 13C22.746 13 12 23.7870921 12 37.096644c0 10.6440272 6.876 19.6751861 16.4145 22.8617681C29.6145 60.1797862 30.0525 59.4358488 30.0525 58.7973276 30.0525 58.2250681 30.0315 56.7100863 30.0195 54.6996482c-6.6765 1.4562499-8.085-3.2302544-8.085-3.2302544-1.0905-2.7829884-2.664-3.5239139-2.664-3.5239139C17.091 46.4500754 19.4355 46.4801943 19.4355 46.4801943c2.4075.1701719 3.675 2.4833051 3.675 2.4833051 2.142 3.6820383 5.6175 2.6188404 6.9855 2.0014024C30.3135 49.4077535 30.9345 48.3460615 31.62 47.7436831 26.2905 47.1352808 20.688 45.0691228 20.688 35.8361671c0-2.6308879.9345-4.781379 2.4705-6.4665327C22.911 28.7597262 22.0875 26.3110578 23.3925 22.9934585c0 0 2.016-.6475568 6.6 2.4697516C31.908 24.9285993 33.96 24.6620468 36.0015 24.6515052 38.04 24.6620468 40.0935 24.9285993 42.0105 25.4632101c4.581-3.1173084 6.5925-2.4697516 6.5925-2.4697516C49.9125 26.3110578 49.089 28.7597262 48.8415 29.3696344 50.3805 31.0547881 51.309 33.2052792 51.309 35.8361671c0 9.2555448-5.6115 11.29309-10.9575 11.8894446.860999999999997.7439374 1.629 2.2137408 1.629 4.4621184C41.9805 55.4089489 41.9505 58.0067059 41.9505 58.7973276 41.9505 59.4418726 42.3825 60.1918338 43.6005 59.9554002 53.13 56.7627944 60 47.7376593 60 37.096644 60 23.7870921 49.254 13 35.9985 13" fill="#fff"/></g></g></g></svg></a></div><div class=copyright>© Copyright
+2022
+<span class=split><svg fill="#bbb" width="15" height="15" id="heart-15" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><path d="M13.91 6.75c-1.17 2.25-4.3 5.31-6.07 6.94-.1903.1718-.4797.1718-.67.0C5.39 12.06 2.26 9 1.09 6.75-1.48 1.8 5-1.5 7.5 3.45 10-1.5 16.48 1.8 13.91 6.75z"/></svg></span>easystack</div><div class=powerby>Powered by <a href=http://www.gohugo.io/>Hugo</a> Theme By <a href=https://github.com/nodejh/hugo-theme-cactus-plus>nodejh</a></div></footer></body></html>

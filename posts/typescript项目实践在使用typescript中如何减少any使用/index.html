@@ -1,0 +1,101 @@
+<!doctype html><html lang=zh><head><title>TypeScript项目实践——在使用Typescript中，如何减少any使用？ | easystack</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="TypeScript 项目实践 🔗该系列文章主要是总结TypeScript在项目中实践经验，遇到什么样的问题，针对具体问题的解决方案，目的是给希望使用或正在使用T"><meta name=generator content="Hugo 0.96.0"><meta name=ROBOTS content="NOINDEX, NOFOLLOW"><link rel=stylesheet href=/css/style.css><link rel="shortcut icon" href=/images/favicon.ico type=image/x-icon></head><body><nav class=navigation><a href=/><span class=arrow>←</span>首页</a>
+<a href=/posts>归档</a>
+<a href=/tags>标签</a>
+<a href=/about>关于</a>
+<a class=button href=https://easystack.github.io/index.xml>订阅</a></nav><main class=main><section id=single><h1 class=title>TypeScript项目实践——在使用Typescript中，如何减少any使用？</h1><div class=tip><time datetime="2022-04-06 14:58:47 +0800 +0800">2022年04月06日</time>
+<span class=split>·</span>
+<span>1405字</span>
+<span class=split>·</span>
+<span>3分钟</span></div><aside class=toc><details><summary>Table of Contents</summary><div><nav id=TableOfContents><ul><li><a href=#在使用typescript中如何减少any使用>在使用Typescript中，如何减少any使用？</a><ul><li><a href=#联合类型代替any>联合类型代替any</a></li><li><a href=#-集合生成一个新类型代替any>& 集合生成一个新类型代替any</a></li><li><a href=#returntype获取函数返回值的类型>ReturnType获取函数返回值的类型</a></li><li><a href=#as指定类型>as指定类型</a></li><li><a href=#可索引接口代替any>可索引接口代替any</a></li><li><a href=#总结>总结</a></li></ul></li></ul></nav></div></details></aside><div class=content><h1 id=typescript-项目实践>TypeScript 项目实践 <a href=#typescript-%e9%a1%b9%e7%9b%ae%e5%ae%9e%e8%b7%b5 class=anchor>🔗</a></h1><p>该系列文章主要是总结TypeScript在项目中实践经验，遇到什么样的问题，针对具体问题的解决方案，目的是给希望使用或正在使用TypeScript的同行提供参考，高效正确的使用TypeScript。</p><h2 id=在使用typescript中如何减少any使用>在使用Typescript中，如何减少any使用？ <a href=#%e5%9c%a8%e4%bd%bf%e7%94%a8typescript%e4%b8%ad%e5%a6%82%e4%bd%95%e5%87%8f%e5%b0%91any%e4%bd%bf%e7%94%a8 class=anchor>🔗</a></h2><p>本文主要是总结项目中实践经验，在Typescript中减少any的使用。</p><h3 id=联合类型代替any>联合类型代替any <a href=#%e8%81%94%e5%90%88%e7%b1%bb%e5%9e%8b%e4%bb%a3%e6%9b%bfany class=anchor>🔗</a></h3><p>当一个对象需要指定多个类型时，使用了any作为类型，为了减少any的使用，我们可以用联合类型(|)组成多类型来代替any。
+例如：定义一个格式化数字类型和日期类型formatTime方法，方法的入参类型就可以使用联合类型(number | Date)</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-typescript data-lang=typescript><span style=display:flex><span><span style=color:#080;font-style:italic>// bad
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>formatTime(time: <span style=color:#0b0;font-weight:700>any</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>if</span> (<span style=color:#a2f;font-weight:700>typeof</span> time <span style=color:#666>===</span> <span style=color:#b44>&#39;number&#39;</span>) {
+</span></span><span style=display:flex><span>      time <span style=color:#666>=</span> <span style=color:#a2f;font-weight:700>new</span> <span style=color:#a2f>Date</span>(time <span style=color:#666>*</span> <span style=color:#666>1000</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> year <span style=color:#666>=</span> time.getFullYear();
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> month <span style=color:#666>=</span> time.getMonth() <span style=color:#666>+</span> <span style=color:#666>1</span>;
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> day <span style=color:#666>=</span> time.getDate();
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> hours <span style=color:#666>=</span> time.getHours();
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> minu <span style=color:#666>=</span> time.getMinutes();
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> second <span style=color:#666>=</span> time.getSeconds();
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>return</span> <span style=color:#b44>`</span><span style=color:#b68;font-weight:700>${</span>year<span style=color:#b68;font-weight:700>}</span><span style=color:#b44>-</span><span style=color:#b68;font-weight:700>${</span>month<span style=color:#b68;font-weight:700>}</span><span style=color:#b44>-</span><span style=color:#b68;font-weight:700>${</span>day<span style=color:#b68;font-weight:700>}</span><span style=color:#b44> </span><span style=color:#b68;font-weight:700>${</span>hours<span style=color:#b68;font-weight:700>}</span><span style=color:#b44>:</span><span style=color:#b68;font-weight:700>${</span>minu<span style=color:#b68;font-weight:700>}</span><span style=color:#b44>:</span><span style=color:#b68;font-weight:700>${</span>second<span style=color:#b68;font-weight:700>}</span><span style=color:#b44>`</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// good 使用联合类型代替any
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>function</span> formatTime(time: <span style=color:#0b0;font-weight:700>number</span> <span style=color:#666>|</span> <span style=color:#a2f>Date</span>) {
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// 传入Date类型参数
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>formatTime(<span style=color:#a2f;font-weight:700>new</span> <span style=color:#a2f>Date</span>());
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// 传入number类型参数
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>formatTime(<span style=color:#666>1600000000</span>);
+</span></span></code></pre></div><h3 id=-集合生成一个新类型代替any>& 集合生成一个新类型代替any <a href=#-%e9%9b%86%e5%90%88%e7%94%9f%e6%88%90%e4%b8%80%e4%b8%aa%e6%96%b0%e7%b1%bb%e5%9e%8b%e4%bb%a3%e6%9b%bfany class=anchor>🔗</a></h3><p>当一个对象需要指定的类型缺失属性时，使用了any作为类型，为了减少any的使用我们可以用集合(&)组成新类型来代替any。
+例如：已有一个createInstance方法，需定义一个迁移方法migrationInstance，入参类型与createInstance相似，只是多一个oldID属性，我们可以用集合(&)组成含有oldID的新类型。</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-typescript data-lang=typescript><span style=display:flex><span><span style=color:#a2f;font-weight:700>export</span> <span style=color:#a2f;font-weight:700>class</span> ApiInstanceService {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#080;font-style:italic>// 定义createInstance
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  createInstance(params<span style=color:#666>:</span> {
+</span></span><span style=display:flex><span>    name: <span style=color:#0b0;font-weight:700>string</span>;
+</span></span><span style=display:flex><span>    cpu: <span style=color:#0b0;font-weight:700>number</span>;
+</span></span><span style=display:flex><span>    member: <span style=color:#0b0;font-weight:700>number</span>;
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span>  }) {
+</span></span><span style=display:flex><span>  ...
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>  <span style=color:#080;font-style:italic>// bad
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  migrationInstance (params: <span style=color:#0b0;font-weight:700>any</span>) {
+</span></span><span style=display:flex><span>  ...
+</span></span><span style=display:flex><span> }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#080;font-style:italic>// good 将createInstance的参数类型通过集合方式生成包含oldID的新类型
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>  migrationInstance(params: <span style=color:#0b0;font-weight:700>Parameters</span>&lt;<span style=color:green;font-weight:700>ApiInstanceService</span><span>[&#39;</span><span style=color:#b44>createInstance</span><span>&#39;]</span>&gt;[<span style=color:#666>0</span>] <span style=color:#666>&amp;</span> { oldID: <span style=color:#0b0;font-weight:700>string</span> }) {
+</span></span><span style=display:flex><span>  ...
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=returntype获取函数返回值的类型>ReturnType获取函数返回值的类型 <a href=#returntype%e8%8e%b7%e5%8f%96%e5%87%bd%e6%95%b0%e8%bf%94%e5%9b%9e%e5%80%bc%e7%9a%84%e7%b1%bb%e5%9e%8b class=anchor>🔗</a></h3><p>当一个对象类型为函数返回值的类型，并且无法定位到这个类型时，使用了any作为类型，为了减少any的使用。
+例如：调用了setInterval方法，当前无法确定返回值的类型，使用ReturnType获取返回值类型。</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-typescript data-lang=typescript><span style=display:flex><span><span style=color:#080;font-style:italic>// bad
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>let</span> interval: <span style=color:#0b0;font-weight:700>any</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// good
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>let</span> interval<span style=color:#666>!:</span> ReturnType&lt;<span style=color:green;font-weight:700>typeof</span> <span style=color:#b44>setInterval</span>&gt;;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>interval <span style=color:#666>=</span> setInterval(() <span style=color:#666>=&gt;</span> {
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>}, <span style=color:#666>3000</span>);
+</span></span></code></pre></div><h3 id=as指定类型>as指定类型 <a href=#as%e6%8c%87%e5%ae%9a%e7%b1%bb%e5%9e%8b class=anchor>🔗</a></h3><p>当一个对象中的属性在当前类型中匹配不到时，使用了any作为类型，为了减少any的使用
+我们用as指定类型来代替any。（注意：指定的类型必须是正确的类型）
+例如：定义searchChange方法，为了获取e.target.value，将参数e.target通过as指定
+HTMLInputElement类型获取value。</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-typescript data-lang=typescript><span style=display:flex><span><span style=color:#080;font-style:italic>// 触发input调用searchChange方法
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>&lt;<span style=color:green;font-weight:700>input</span> <span style=color:#b44>nz</span><span>-</span><span style=color:#b44>input</span> <span>(</span><span style=color:#b44>input</span><span>)=&#34;</span><span style=color:#b44>searchChange</span><span>($</span><span style=color:#b44>event</span><span>)&#34;</span> /&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// bad
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>searchChange(e: <span style=color:#0b0;font-weight:700>any</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> value <span style=color:#666>=</span> e.target.value;
+</span></span><span style=display:flex><span>    .....
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// good e.target通过as指定HTMLInputElement类型获取value
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>searchChange(e: <span style=color:#0b0;font-weight:700>Event</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a2f;font-weight:700>const</span> value <span style=color:#666>=</span> (e.target <span style=color:#a2f;font-weight:700>as</span> HTMLInputElement).value;
+</span></span><span style=display:flex><span>    .....
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=可索引接口代替any>可索引接口代替any <a href=#%e5%8f%af%e7%b4%a2%e5%bc%95%e6%8e%a5%e5%8f%a3%e4%bb%a3%e6%9b%bfany class=anchor>🔗</a></h3><p>当一个对象中的属性存在不确定性，无法进行固定约束，使用了any作为类型，为了减少any的使用,我们可以用索引接口代替any.
+例如：TemplateOptions中的formlyItemStyle属性用于指定样式数据，例如：{marginBottom: &lsquo;0&rsquo;} formlyItemStyle属性无法固定约束类型，我们使用索引接口代替any。</p><div class=highlight><pre tabindex=0 style=background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-typescript data-lang=typescript><span style=display:flex><span><span style=color:#080;font-style:italic>// TemplateOptions中的formlyItemStyle属性用于指定样式，例如：{marginBottom: &#39;0&#39;}
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// bad 
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>interface</span> TemplateOptions {
+</span></span><span style=display:flex><span>    <span style=color:#080;font-style:italic>//...
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span>    formlyItemStyle?: <span style=color:#0b0;font-weight:700>any</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#080;font-style:italic>// 索引接口代替any
+</span></span></span><span style=display:flex><span><span style=color:#080;font-style:italic></span><span style=color:#a2f;font-weight:700>interface</span> TemplateOptions {
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span>    formlyItemStyle<span style=color:#666>?:</span> { [key: <span style=color:#0b0;font-weight:700>string</span>]<span style=color:#666>:</span> <span style=color:#0b0;font-weight:700>string</span> };
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=总结>总结 <a href=#%e6%80%bb%e7%bb%93 class=anchor>🔗</a></h3><p>代码中应减少any使用，可增加代码的可读性和可维护性，频繁使用 any 不利于项目的后续维护，
+会出现本可避免的bug。</p></div><div class=tags><a href=https://easystack.github.io/tags/%E5%89%8D%E7%AB%AF>前端</a>
+<a href=https://easystack.github.io/tags/typescript>TypeScript</a></div><div id=comment></div></section></main><footer id=footer><div id=social><a class=symbol href=easystack rel=me target=_blank><svg fill="#bbb" width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>Github</title><desc>Created with Sketch.</desc><defs/><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="Social-Icons---Rounded-Black" transform="translate(-264.000000, -939.000000)"><g id="Github" transform="translate(264.000000, 939.000000)"><path d="M8 72H64c4.418278.0 8-3.581722 8-8V8c0-4.418278-3.581722-8-8-8H8c-4.418278 811624501e-24-8 3.581722-8 8V64c541083001e-24 4.418278 3.581722 8 8 8z" id="Rounded" fill="#bbb"/><path d="M35.9985 13C22.746 13 12 23.7870921 12 37.096644c0 10.6440272 6.876 19.6751861 16.4145 22.8617681C29.6145 60.1797862 30.0525 59.4358488 30.0525 58.7973276 30.0525 58.2250681 30.0315 56.7100863 30.0195 54.6996482c-6.6765 1.4562499-8.085-3.2302544-8.085-3.2302544-1.0905-2.7829884-2.664-3.5239139-2.664-3.5239139C17.091 46.4500754 19.4355 46.4801943 19.4355 46.4801943c2.4075.1701719 3.675 2.4833051 3.675 2.4833051 2.142 3.6820383 5.6175 2.6188404 6.9855 2.0014024C30.3135 49.4077535 30.9345 48.3460615 31.62 47.7436831 26.2905 47.1352808 20.688 45.0691228 20.688 35.8361671c0-2.6308879.9345-4.781379 2.4705-6.4665327C22.911 28.7597262 22.0875 26.3110578 23.3925 22.9934585c0 0 2.016-.6475568 6.6 2.4697516C31.908 24.9285993 33.96 24.6620468 36.0015 24.6515052 38.04 24.6620468 40.0935 24.9285993 42.0105 25.4632101c4.581-3.1173084 6.5925-2.4697516 6.5925-2.4697516C49.9125 26.3110578 49.089 28.7597262 48.8415 29.3696344 50.3805 31.0547881 51.309 33.2052792 51.309 35.8361671c0 9.2555448-5.6115 11.29309-10.9575 11.8894446.860999999999997.7439374 1.629 2.2137408 1.629 4.4621184C41.9805 55.4089489 41.9505 58.0067059 41.9505 58.7973276 41.9505 59.4418726 42.3825 60.1918338 43.6005 59.9554002 53.13 56.7627944 60 47.7376593 60 37.096644 60 23.7870921 49.254 13 35.9985 13" fill="#fff"/></g></g></g></svg></a></div><div class=copyright>© Copyright
+2022
+<span class=split><svg fill="#bbb" width="15" height="15" id="heart-15" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15"><path d="M13.91 6.75c-1.17 2.25-4.3 5.31-6.07 6.94-.1903.1718-.4797.1718-.67.0C5.39 12.06 2.26 9 1.09 6.75-1.48 1.8 5-1.5 7.5 3.45 10-1.5 16.48 1.8 13.91 6.75z"/></svg></span>easystack</div><div class=powerby>Powered by <a href=http://www.gohugo.io/>Hugo</a> Theme By <a href=https://github.com/nodejh/hugo-theme-cactus-plus>nodejh</a></div></footer></body></html>
