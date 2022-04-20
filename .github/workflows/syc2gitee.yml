@@ -20,7 +20,7 @@ jobs:
     # syc repo from there to gitee 
     steps:
     - name: Checkout source code
-      uses: easystack/easystack.github.io@main
+      uses: actions/checkout@v2
     - name: Mirror Github to Gitee
       uses: ./.
       with:
