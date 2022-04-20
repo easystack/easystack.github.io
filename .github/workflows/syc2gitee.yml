@@ -17,7 +17,7 @@ jobs:
     env:
       dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
       dst_token: ${{ secrets.GITEE_TOKEN }}
-      gitee_user: ${{ secrets.GITEE_USER }}
+      #gitee_user: ${{ secrets.GITEE_USER }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -25,7 +25,7 @@ jobs:
         
       - name: sync to gitee
         uses: Yikun/hub-mirror-action@master
-        if: env.dst_key && env.dst_token && env.gitee_user
+        if: env.dst_key && env.dst_token
         with:
           src: 'github/${{ github.repository_owner }}'
           dst: 'gitee/${{ github.repository_owner }}'
