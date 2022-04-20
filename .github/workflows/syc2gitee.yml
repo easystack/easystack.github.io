@@ -1,10 +1,9 @@
 # This is a basic workflow to help you get started with Actions
 
-name: syc-to-gitee
+name: sync-to-gitee
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
   pull_request:
     branches: [ main ]
@@ -12,24 +11,26 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  run:
-    # The type of runner that the job will run on
+  repo-sync:
+    env:
+      dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
+      dst_token: ${{ secrets.GITEE_TOKEN }}
+      gitee_user: ${{ secrets.GITEE_USER }}
     runs-on: ubuntu-latest
-
-    # syc repo from there to gitee 
     steps:
-    - name: Checkout source code
-      uses: actions/checkout@v2
-    - name: Mirror Github to Gitee
-      uses: ./.
-      with:
-        src: github/easystack/easystack.github.io
-        dst: gitee/easystack/easystack.github.io
-        dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
-        dst_token: ${{ secrets.GITEE_TOKEN }}
-        account_type: org
-        # Only sync normal repo
-        white_list: 'easystack.github.io'
-        force_update: true
-        debug: true
+      - uses: actions/checkout@v2
+        name: checkout
+        
+      - name: sync to gitee
+        uses: Yikun/hub-mirror-action@master
+        if: env.dst_key && env.dst_token && env.gitee_user
+        with:
+          src: 'github/${{ github.repository_owner }}'
+          dst: 'gitee/${{ github.repository_owner }}'
+          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
+          dst_token:  ${{ secrets.GITEE_TOKEN }}
+          # 如果是组织，指定组织即可，默认为用户 user
+          # account_type: org
+          static_list: ${{ github.event.repository.name }}
