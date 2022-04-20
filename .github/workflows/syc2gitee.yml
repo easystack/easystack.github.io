@@ -34,3 +34,4 @@ jobs:
           # 如果是组织，指定组织即可，默认为用户 user
           # account_type: org
           static_list: ${{ github.event.repository.name }}
+          force_update: true
